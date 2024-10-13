@@ -6,7 +6,6 @@ import time
 import hmac
 import hashlib
 import base64
-import pyperclip
 
 # 페이지 레이아웃을 넓게 설정
 st.set_page_config(layout="wide", page_title="블로그 작성 도우미")
@@ -21,7 +20,31 @@ client_secret = st.secrets["general"]["client_secret"]
 # Constants
 BASE_URL = "https://api.naver.com"
 
-# 키워드 분석 관련 함수
+# H1을 H2로 변경하는 함수
+def convert_h1_to_h2(text):
+    # HTML: <h1> 태그를 <h2>로 변경
+    text = re.sub(r'<h1[^>]*>(.*?)<\/h1>', r'<h2>\1</h2>', text, flags=re.IGNORECASE)
+    # Markdown: # (H1) 을 ## (H2)로 변경
+    text = re.sub(r'^# (.+)', r'## \1', text, flags=re.MULTILINE)
+    return text
+
+# Markdown -> HTML 변환 함수
+def markdown_to_html(text):
+    # Markdown을 HTML로 변환
+    text = convert_h1_to_h2(text)  # H1은 H2로 변경
+    text = re.sub(r'^## (.+)', r'<h2>\1</h2>', text, flags=re.MULTILINE)  # H2 변환
+    text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)  # Bold 처리
+    return text.replace('\n', '<br>')  # 줄바꿈을 <br>로 변환
+
+# HTML -> Markdown 변환 함수
+def html_to_markdown(text):
+    # HTML을 Markdown으로 변환
+    text = convert_h1_to_h2(text)  # H1은 H2로 변경
+    text = re.sub(r'<h2[^>]*>(.*?)<\/h2>', r'## \1', text, flags=re.IGNORECASE)  # H2 변환
+    text = re.sub(r'<strong>(.*?)<\/strong>', r'**\1**', text, flags=re.IGNORECASE)  # Bold 처리
+    return text.replace('<br>', '\n')  # <br> 태그를 줄바꿈으로 변환
+
+# API 요청을 위한 서명 생성 클래스
 class Signature:
     @staticmethod
     def generate(timestamp, method, uri, secret_key):
@@ -167,102 +190,32 @@ def create_glowing_button(text, link):
 .glow-on-hover:active:after {{
     background: transparent;
 }}
-.glow-on-hover:hover:before {{
-    opacity: 1;
-}}
-.glow-on-hover:after {{
-    z-index: -1;
-    content: '';
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    background: #111;
-    left: 0;
-    top: 0;
-    border-radius: 10px;
-}}
 @keyframes glowing {{
     0% {{ background-position: 0 0; }}
     50% {{ background-position: 400% 0; }}
     100% {{ background-position: 0 0; }}
 }}
 </style>
-<a href="{link}" target="_blank">
-    <button class="glow-on-hover" type="button">{text}</button>
-</a>
+<a href="{link}" target="_blank"><button class="glow-on-hover" type="button">{text}</button></a>
 """
 
-# 메인 레이아웃 설정
-st.title('블로그 작성 도우미')
+# 블로그 포맷 선택
+format_options = ["HTML", "Markdown", "Plain Text"]
+selected_format = st.selectbox("출력 형식을 선택하세요:", format_options)
 
-# 구글 애드센스 코드 버튼
-st.subheader("구글 애드센스 코드")
-for name, code in adsense_codes.items():
-    if st.button(f"{name} 광고 코드 복사"):
-        st.code(code, language='html')
-        st.success(f"{name} 광고 코드가 표시되었습니다. 복사하여 사용하세요.")
+# 텍스트 입력
+st.write("### 블로그 글 작성")
+text_input = st.text_area("내용을 입력하세요", height=300)
 
-# 반짝이는 버튼 생성
-st.subheader("반짝이는 버튼 생성")
-button_text = st.text_input("버튼 텍스트 입력")
-button_link = st.text_input("버튼 링크 입력")
-if st.button("반짝이는 버튼 코드 생성"):
-    button_code = create_glowing_button(button_text, button_link)
-    st.code(button_code, language='html')
-    st.success("반짝이는 버튼 코드가 생성되었습니다. 위의 코드를 복사하여 사용하세요.")
-    st.markdown(button_code, unsafe_allow_html=True)
-
-# 블로그 글 작성
-st.subheader("블로그 글 작성")
-text_format = st.radio("텍스트 형식 선택", ("HTML", "Markdown", "일반 텍스트"))
-input_text = st.text_area("블로그 글을 작성하세요", height=300)
-
-# 키워드 분석
-keywords = st.text_area('분석할 키워드를 입력하세요 (쉼표로 구분)', 'chatgpt, 인공지능').split(',')
-keywords_to_bold = st.text_input("굵게 표시할 키워드를 입력하세요 (쉼표로 구분)").split(',')
-
-# 이모티콘 추가 버튼
-emoji_list = [("😀", "😀"), ("😂", "😂"), ("😍", "😍"), ("👍", "👍"), ("🎉", "🎉")]
-cols = st.columns(len(emoji_list))
-for idx, (emoji, emoji_symbol) in enumerate(emoji_list):
-    with cols[idx]:
-        if st.button(emoji):
-            input_text += emoji_symbol
-            st.experimental_rerun()
-
-# 키워드 강조 기능
-if text_format == "HTML":
-    for keyword in keywords_to_bold:
-        keyword = keyword.strip()
-        if keyword:
-            input_text = re.sub(r'({})'.format(re.escape(keyword)), r'<strong>\1</strong>', input_text)
-elif text_format == "Markdown":
-    for keyword in keywords_to_bold:
-        keyword = keyword.strip()
-        if keyword:
-            input_text = re.sub(r'({})'.format(re.escape(keyword)), r'**\1**', input_text)
-
-# 작성된 글 미리보기
-st.subheader("작성된 블로그 글 미리 보기:")
-if text_format == "HTML":
-    st.markdown(input_text, unsafe_allow_html=True)
-elif text_format == "Markdown":
-    st.markdown(input_text)
-else:
-    st.text(input_text)
-
-# 키워드 분석 결과
-st.subheader("키워드 분석 결과")
-if st.button('분석 실행'):
-    tmp_df = pd.DataFrame()
-    with st.spinner('키워드 분석 중...'):
-        for keyword in keywords:
-            keyword = keyword.strip()
-            if keyword:
-                df = get_keyword_analysis(keyword)
-                if not df.empty:
-                    tmp_df = pd.concat([tmp_df, df], axis=0)
-    if not tmp_df.empty:
-        st.dataframe(tmp_df)
+# 텍스트 변환 및 출력
+if st.button("변환"):
+    if selected_format == "HTML":
+        output_text = markdown_to_html(text_input)
+    elif selected_format == "Markdown":
+        output_text = html_to_markdown(text_input)
     else:
-        st.warning("분석 결과가 없습니다. 키워드를 확인하고 다시 시도해 주세요.")
+        output_text = text_input  # Plain Text 선택 시 변환 없이 출력
+    
+    st.write(f"### 변환된 {selected_format} 텍스트")
+    st.code(output_text, language=selected_format.lower())
+
