@@ -195,73 +195,77 @@ def create_glowing_button(text, link):
 # 메인 레이아웃 설정
 st.title('블로그 작성 도우미')
 
-# 구글 애드센스 코드 버튼
+# 블로그 글 작성
+input_text = st.text_area("블로그 글을 작성하세요", height=300)
+
+# 구글 애드센스 코드
 st.subheader("구글 애드센스 코드")
 for name, code in adsense_codes.items():
     if st.button(f"{name} 광고 코드 복사"):
-        st.code(code, language='html')
-        st.success(f"{name} 광고 코드가 표시되었습니다. 복사하여 사용하세요.")
+        pyperclip.copy(code)
+        st.success(f"{name} 광고 코드가 복사되었습니다.")
 
 # 반짝이는 버튼 생성
 st.subheader("반짝이는 버튼 생성")
 button_text = st.text_input("버튼 텍스트 입력")
 button_link = st.text_input("버튼 링크 입력")
-if st.button("반짝이는 버튼 코드 생성"):
+if st.button("반짝이는 버튼 생성"):
     button_code = create_glowing_button(button_text, button_link)
-    st.code(button_code, language='html')
-    st.success("반짝이는 버튼 코드가 생성되었습니다. 위의 코드를 복사하여 사용하세요.")
-    st.markdown(button_code, unsafe_allow_html=True)
-
-# 블로그 글 작성
-st.subheader("블로그 글 작성")
-text_format = st.radio("텍스트 형식 선택", ("HTML", "Markdown", "일반 텍스트"))
-input_text = st.text_area("블로그 글을 작성하세요", height=300)
+    pyperclip.copy(button_code)
+    st.success("반짝이는 버튼 코드가 복사되었습니다.")
 
 # 키워드 분석
-keywords = st.text_area('분석할 키워드를 입력하세요 (쉼표로 구분)', 'chatgpt, 인공지능')
-keywords_to_bold = st.text_input("굵게 표시할 키워드 입력 (쉼표로 구분)", "")
+keywords = st.text_area('분석할 키워드를 입력하세요 (쉼표로 구분)', 'chatgpt, 인공지능').split(',')
+keywords_to_bold = st.text_input("굵게 표시할 키워드를 입력하세요 (쉼표로 구분)").split(',')
 
-# 키워드 분석 버튼 및 결과 표시
-if st.button("키워드 분석 시작"):
-    keyword_list = [kw.strip() for kw in keywords.split(',')]
-    all_data = []
-    
-    for keyword in keyword_list:
-        df = get_keyword_analysis(keyword)
-        if not df.empty:
-            all_data.append(df)
+# 키워드 강조 기능
+for keyword in keywords_to_bold:
+    keyword = keyword.strip()
+    if keyword:
+        input_text = re.sub(r'({})'.format(re.escape(keyword)), r'<strong>\
+                input_text = re.sub(r'({})'.format(re.escape(keyword)), r'<strong>\1</strong>', input_text, flags=re.IGNORECASE)
 
-    if all_data:
-        final_df = pd.concat(all_data, ignore_index=True)
-        st.subheader("키워드 분석 결과")
-        st.dataframe(final_df)
+# HTML 변환
+final_html = f"""
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>블로그 글</title>
+</head>
+<body>
+    <h1>블로그 글</h1>
+    <div>{input_text}</div>
+    <h2>구글 애드센스</h2>
+    {''.join(adsense_codes.values())}
+</body>
+</html>
+"""
 
-        # HTML 테이블 생성
-        html_table = final_df.to_html(index=False, escape=False)
+# HTML 미리보기
+st.subheader("HTML 미리보기")
+st.markdown(final_html, unsafe_allow_html=True)
+
+# 실제 페이지 미리보기
+st.subheader("실제 페이지 보기")
+st.components.v1.html(final_html, height=600)
+
+# 옵션 섹션
+st.sidebar.title("옵션")
+st.sidebar.subheader("검색어 통계 보기")
+if st.sidebar.button("통계 확인"):
+    if keywords:
+        analysis_results = []
+        for keyword in keywords:
+            df = get_keyword_analysis(keyword.strip())
+            if not df.empty:
+                analysis_results.append(df)
         
-        # HTML 코드에 Google 광고 및 클릭 버튼 추가
-        ads_code = adsense_codes["구라다"]  # 원하는 광고 코드로 변경
-        button_code = create_glowing_button("더 알아보기", "#")
-        
-        # 최종 HTML 출력
-        final_html = f"""
-        <h2>키워드 분석 결과 요약</h2>
-        {html_table}
-        <h3>광고</h3>
-        {ads_code}
-        <h3>행동 버튼</h3>
-        {button_code}
-        """
-        
-        st.markdown(final_html, unsafe_allow_html=True)
+        if analysis_results:
+            combined_df = pd.concat(analysis_results, ignore_index=True)
+            st.sidebar.write(combined_df)
+        else:
+            st.sidebar.write("분석 결과가 없습니다.")
     else:
-        st.warning("선택한 키워드에 대한 데이터가 없습니다.")
+        st.sidebar.write("키워드를 입력하세요.")
 
-# 원본 텍스트 표시
-st.subheader("원본 블로그 글")
-st.write(input_text)
 
-# HTML 표와 광고를 원본 텍스트 아래에 표시
-if input_text:
-    st.markdown("<h2>아래는 HTML 테이블 및 광고</h2>", unsafe_allow_html=True)
-    st.markdown(final_html, unsafe_allow_html=True)
