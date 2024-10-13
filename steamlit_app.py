@@ -6,6 +6,7 @@ import zipfile
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import os
+from bs4 import BeautifulSoup
 
 # 페이지 레이아웃을 넓게 설정
 st.set_page_config(layout="wide", page_title="블로그 작성 도우미")
@@ -233,3 +234,19 @@ if st.button('이미지 다운로드 및 압축'):
             st.error("블로그에서 이미지를 찾을 수 없습니다.")
     else:
         st.error("블로그 URL을 입력하세요.")
+
+# 글 작성 도구
+st.markdown('<div class="section-title">글 작성 도구</div>', unsafe_allow_html=True)
+
+blog_content = st.text_area("블로그 내용을 입력하세요", height=300)
+keyword_input = st.text_input("키워드를 입력하세요 (쉼표로 구분)", "")
+
+if st.button("키워드 통계"):
+    if blog_content and keyword_input:
+        keywords = [kw.strip() for kw in keyword_input.split(",")]
+        keyword_counts = {kw: blog_content.count(kw) for kw in keywords}
+        st.write("키워드 통계:")
+        st.write(pd.DataFrame(keyword_counts.items(), columns=["키워드", "횟수"]))
+    else:
+        st.warning("블로그 내용과 키워드를 입력하세요.")
+
