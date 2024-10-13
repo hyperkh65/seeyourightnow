@@ -196,34 +196,29 @@ def create_glowing_button(text, link):
 st.title('블로그 작성 도우미')
 
 # 블로그 글 작성
+st.subheader("블로그 글 작성")
+text_format = st.radio("텍스트 형식 선택", ("HTML", "Markdown", "일반 텍스트"))
 input_text = st.text_area("블로그 글을 작성하세요", height=300)
-
-# 구글 애드센스 코드
-st.subheader("구글 애드센스 코드")
-for name, code in adsense_codes.items():
-    if st.button(f"{name} 광고 코드 복사"):
-        pyperclip.copy(code)
-        st.success(f"{name} 광고 코드가 복사되었습니다.")
-
-# 반짝이는 버튼 생성
-st.subheader("반짝이는 버튼 생성")
-button_text = st.text_input("버튼 텍스트 입력")
-button_link = st.text_input("버튼 링크 입력")
-if st.button("반짝이는 버튼 생성"):
-    button_code = create_glowing_button(button_text, button_link)
-    pyperclip.copy(button_code)
-    st.success("반짝이는 버튼 코드가 복사되었습니다.")
 
 # 키워드 분석
 keywords = st.text_area('분석할 키워드를 입력하세요 (쉼표로 구분)', 'chatgpt, 인공지능').split(',')
 keywords_to_bold = st.text_input("굵게 표시할 키워드를 입력하세요 (쉼표로 구분)").split(',')
 
+# 이모티콘 추가 버튼
+emoji_list = [("😀", "😀"), ("😂", "😂"), ("😍", "😍"), ("👍", "👍"), ("🎉", "🎉")]
+cols = st.columns(len(emoji_list))
+for idx, (emoji, emoji_symbol) in enumerate(emoji_list):
+    with cols[idx]:
+        if st.button(emoji):
+            input_text += emoji_symbol
+            st.experimental_rerun()
+
 # 키워드 강조 기능
-for keyword in keywords_to_bold:
-    keyword = keyword.strip()
-    if keyword:
-        input_text = re.sub(r'({})'.format(re.escape(keyword)), r'<strong>\
-                input_text = re.sub(r'({})'.format(re.escape(keyword)), r'<strong>\1</strong>', input_text, flags=re.IGNORECASE)
+if text_format == "HTML":
+    for keyword in keywords_to_bold:
+        keyword = keyword.strip()
+        if keyword:
+            input_text = re.sub(r'({})'.format(re.escape(keyword)), r'<strong>\1</strong>', input_text, flags=re.IGNORECASE)
 
 # HTML 변환
 final_html = f"""
@@ -249,6 +244,26 @@ st.markdown(final_html, unsafe_allow_html=True)
 st.subheader("실제 페이지 보기")
 st.components.v1.html(final_html, height=600)
 
+# 애드센스 키 3개 추가 및 복사 버튼
+st.subheader("애드센스 키")
+for code_name, code in adsense_codes.items():
+    col1, col2 = st.columns([5, 1])
+    with col1:
+        st.markdown(f"**{code_name}**")
+        st.markdown(code, unsafe_allow_html=True)
+    with col2:
+        if st.button("복사", key=code_name):
+            pyperclip.copy(code)
+            st.success("복사되었습니다!")
+
+# 버튼 생성기
+st.subheader("버튼 생성기")
+button_text = st.text_input("버튼 텍스트 입력")
+button_link = st.text_input("버튼 링크 입력")
+if st.button("버튼 생성"):
+    glowing_button_html = create_glowing_button(button_text, button_link)
+    st.markdown(glowing_button_html, unsafe_allow_html=True)
+
 # 옵션 섹션
 st.sidebar.title("옵션")
 st.sidebar.subheader("검색어 통계 보기")
@@ -267,5 +282,3 @@ if st.sidebar.button("통계 확인"):
             st.sidebar.write("분석 결과가 없습니다.")
     else:
         st.sidebar.write("키워드를 입력하세요.")
-
-
