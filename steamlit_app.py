@@ -22,13 +22,13 @@ st.markdown("""
         font-size: 3em;
         font-weight: bold;
         text-align: center;
-        color: #4CAF50;
+        color: #4CAF50; /* 녹색 색상 */
         margin-bottom: 30px;
     }
     .section-title {
         font-size: 2em;
         margin-top: 30px;
-        color: #FF5722;
+        color: #FF5722; /* 주황색 */
     }
     .adsense-button {
         background-color: #4CAF50;
@@ -97,6 +97,7 @@ adsense_codes = {
     "미라클E": "<script async src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8940400388075870' crossorigin='anonymous'></script>"
 }
 
+# 버튼을 컬럼으로 나누어서 더 보기 좋게
 cols = st.columns(3)
 for i, (name, code) in enumerate(adsense_codes.items()):
     with cols[i]:
@@ -140,20 +141,23 @@ st.markdown('<div class="section-title">키워드 분석</div>', unsafe_allow_ht
 keywords = st.text_area('분석할 키워드를 입력하세요 (쉼표로 구분)', 'chatgpt, 인공지능').split(',')
 keywords_to_bold = st.text_input("굵게 표시할 키워드를 입력하세요 (쉼표로 구분)").split(',')
 
+# 키워드 분석 버튼
 if st.button('키워드 분석 실행'):
     st.info("분석 결과가 표시될 예정입니다.")
-    # 키워드 분석 처리 로직 추가 가능
 
-# 티스토리 이미지 다운로드 섹션
+# 이미지 다운로드 섹션
 st.markdown('<div class="section-title">티스토리 이미지 다운로드</div>', unsafe_allow_html=True)
 
 blog_url = st.text_input('티스토리 블로그 주소를 입력하세요', '')
+title_text1 = st.text_input('대표 이미지 첫 번째 줄에 사용할 텍스트를 입력하세요', '')
+title_text2 = st.text_input('대표 이미지 두 번째 줄에 사용할 텍스트를 입력하세요', '')
+title_text3 = st.text_input('대표 이미지 세 번째 줄에 사용할 텍스트를 입력하세요', '')
 
 # 이미지 저장 경로
 save_dir = "downloaded_images"
 os.makedirs(save_dir, exist_ok=True)
 
-# 티스토리 블로그에서 이미지 URL 추출
+# 티스토리 블로그의 본문에서 이미지를 추출하는 함수
 def get_image_urls_from_blog(url):
     try:
         response = requests.get(url)
@@ -171,7 +175,7 @@ def get_image_urls_from_blog(url):
         st.error(f"페이지를 불러오는 중 오류가 발생했습니다: {e}")
         return []
 
-# 이미지 메타 데이터를 제거하고 저장하는 함수
+# 이미지 메타 데이터를 제거하는 함수
 def remove_metadata_and_save_image(image_url, idx):
     try:
         response = requests.get(image_url)
@@ -190,22 +194,60 @@ def remove_metadata_and_save_image(image_url, idx):
         st.error(f"이미지를 처리하는 중 오류 발생: {e}")
         return None
 
-# 이미지 다운로드 및 메타데이터 제거 실행
-if st.button('이미지 다운로드 및 메타데이터 제거'):
+# 대표 이미지 생성 함수
+def create_title_image(text1, text2, text3):
+    width, height = 800, 800
+    background_color = (73, 94, 87)  # 배경색
+    img = Image.new('RGB', (width, height), background_color)
+    draw = ImageDraw.Draw(img)
+
+    # 폰트 설정
+    font_path = "NanumGothicCoding-Bold.ttf"  # 로컬에서 사용하는 폰트
+    font_size = 100
+    font = ImageFont.truetype(font_path, font_size)
+
+    # 텍스트 색상 설정
+    text_color1 = (244, 206, 20)  # 첫 번째 줄 색상
+    text_color2 = (255, 255, 255)  # 두 번째 줄 색상
+    text_color3 = (255, 0, 0)  # 세 번째 줄 색상
+
+    # 텍스트 위치 계산
+    text1_width, text1_height = draw.textsize(text1, font=font)
+    text2_width, text2_height = draw.textsize(text2, font=font)
+    text3_width, text3_height = draw.textsize(text3, font=font)
+
+    draw.text(((width - text1_width) // 2, height // 4 - text1_height // 2), text1, font=font, fill=text_color1)
+    draw.text(((width - text2_width) // 2, height // 2 - text2_height // 2), text2, font=font, fill=text_color2)
+    draw.text(((width - text3_width) // 2, height * 3 // 4 - text3_height // 2), text3, font=font, fill=text_color3)
+
+    return img
+
+# 이미지 생성 및 다운로드 버튼
+if st.button("대표 이미지 생성"):
+    title_image = create_title_image(title_text1, title_text2, title_text3)
+    img_buffer = BytesIO()
+    title_image.save(img_buffer, format="PNG")
+    img_buffer.seek(0)
+
+    # 이미지 표시
+    st.image(title_image, caption="생성된 대표 이미지", use_column_width=True)
+
+    # 이미지 다운로드 링크 제공
+    st.download_button("이미지 다운로드", img_buffer, "title_image.png", "image/png")
+
+# 블로그 이미지 URL 가져오기
+if st.button("블로그 이미지 다운로드"):
     if blog_url:
-        img_urls = get_image_urls_from_blog(blog_url)
-        if img_urls:
-            st.write(f"총 {len(img_urls)}개의 이미지를 찾았습니다.")
-            image_paths = []
-            for idx, img_url in enumerate(img_urls):
-                save_path = remove_metadata_and_save_image(img_url, idx)
-                if save_path:
-                    image_paths.append(save_path)
-                    st.image(save_path, caption=f"Image {idx+1}", use_column_width=True)
-            
-            if image_paths:
-                st.success(f"{len(image_paths)}개의 이미지가 성공적으로 다운로드되었습니다.")
-        else:
-            st.warning("이미지를 찾지 못했습니다.")
+        image_urls = get_image_urls_from_blog(blog_url)
+        for idx, img_url in enumerate(image_urls):
+            saved_image_path = remove_metadata_and_save_image(img_url, idx)
+            if saved_image_path:
+                st.image(saved_image_path, caption=f"다운로드된 이미지 {idx + 1}", use_column_width=True)
+        if image_urls:
+            with zipfile.ZipFile(f"{save_dir}/images.zip", 'w') as zipf:
+                for img in os.listdir(save_dir):
+                    zipf.write(os.path.join(save_dir, img), img)
+            st.success(f"{len(image_urls)}개의 이미지가 다운로드 되었습니다. 'images.zip' 파일을 다운로드하세요.")
+            st.download_button("이미지 다운로드 ZIP", f"{save_dir}/images.zip")
     else:
-        st.warning("블로그 URL을 입력해주세요.")
+        st.warning("먼저 블로그 주소를 입력하세요.")
