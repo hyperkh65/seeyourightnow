@@ -1,4 +1,6 @@
 streamlit
-pandas
 requests
-pyperclip
+beautifulsoup4
+Pillow
+lxml
+pandas
