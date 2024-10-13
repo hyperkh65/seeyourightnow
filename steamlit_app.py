@@ -6,6 +6,7 @@ import time
 import hmac
 import hashlib
 import base64
+from PIL import Image, ImageDraw, ImageFont
 
 # 페이지 레이아웃을 넓게 설정
 st.set_page_config(layout="wide", page_title="블로그 작성 도우미")
@@ -87,7 +88,6 @@ def get_keyword_analysis(keyword):
     except Exception as e:
         st.error(f"예상치 못한 오류 발생: {e}")
         return pd.DataFrame()
-
 # 구글 애드센스 코드
 adsense_codes = {
     "구라다": """<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8940400388075870" crossorigin="anonymous"></script>
@@ -176,59 +176,49 @@ def create_glowing_button(text, link):
 </a>
 """
 
-# 블로그 글 작성 기능
-def write_blog():
-    st.subheader("블로그 글 작성")
+# 대표 이미지 생성 함수
+def create_image_with_text(text):
+    # 이미지 생성
+    img = Image.new('RGB', (500, 300), color=(255, 255, 255))
+    draw = ImageDraw.Draw(img)
     
-    # 블로그 제목 입력
-    title = st.text_input("블로그 제목을 입력하세요:")
+    # 글자 그리기
+    font = ImageFont.load_default()
+    draw.text((10, 50), text, fill=(0, 0, 0), font=font)
     
-    # 블로그 내용 입력
-    content = st.text_area("블로그 내용을 입력하세요:")
-    
-    # 키워드 강조 기능
-    keywords = st.text_input("강조할 키워드를 입력하세요 (쉼표로 구분):").split(',')
-    highlighted_content = content
-    
-    for keyword in keywords:
-        highlighted_content = re.sub(rf'\b({keyword.strip()})\b', r'<b>\1</b>', highlighted_content, flags=re.IGNORECASE)
-
-    # 작성된 글 미리 보기
-    if st.button("미리 보기"):
-        st.markdown("### 미리 보기")
-        st.markdown(f"**제목:** {title}")
-        st.markdown(highlighted_content, unsafe_allow_html=True)
-
-    # 대표 이미지 및 블로그 이미지 추가
-    st.subheader("이미지 추가")
-    image_url = st.text_input("대표 이미지 URL을 입력하세요:")
-    blog_image_url = st.text_input("블로그 이미지 URL을 입력하세요:")
-    
-    if image_url:
-        st.image(image_url, caption="대표 이미지", use_column_width=True)
-    if blog_image_url:
-        st.image(blog_image_url, caption="블로그 이미지", use_column_width=True)
-
+    return img
 # 메인 레이아웃 설정
 st.title('블로그 작성 도우미')
 
-# 구글 애드센스 코드 버튼
-st.subheader("구글 애드센스 코드 선택")
-adsense_selection = st.selectbox("원하는 애드센스 코드를 선택하세요:", list(adsense_codes.keys()))
-st.code(adsense_codes[adsense_selection], language='html')
+# 키워드 입력
+keyword = st.text_input("키워드를 입력하세요")
+if st.button("키워드 분석"):
+    if keyword:
+        analysis_df = get_keyword_analysis(keyword)
+        if not analysis_df.empty:
+            st.dataframe(analysis_df)
 
-# 반짝이는 버튼 생성
-link = st.text_input("반짝이는 버튼 링크를 입력하세요:")
-if link:
-    st.markdown(create_glowing_button("클릭하세요!", link), unsafe_allow_html=True)
+# 키워드 통계 옵션
+if st.button("키워드 통계 보기"):
+    if not analysis_df.empty:
+        total_searches = analysis_df['총검색수'].sum()
+        average_mobile = analysis_df['월간검색수_모바일'].mean()
+        average_pc = analysis_df['월간검색수_PC'].mean()
+        
+        st.write(f"총 검색 수: {total_searches}회")
+        st.write(f"평균 모바일 검색 수: {average_mobile:.2f}회")
+        st.write(f"평균 PC 검색 수: {average_pc:.2f}회")
+    else:
+        st.warning("먼저 키워드 분석을 수행하세요.")
 
-# 키워드 분석 기능
-st.subheader("키워드 분석")
-keyword = st.text_input("분석할 키워드를 입력하세요:")
-if st.button("키워드 분석하기"):
-    analysis_result = get_keyword_analysis(keyword)
-    if not analysis_result.empty:
-        st.dataframe(analysis_result)
+# 애드센스 코드 및 버튼 생성
+st.subheader("구글 애드센스 코드")
+for name, code in adsense_codes.items():
+    st.write(f"**{name}**")
+    st.code(code)
+    st.markdown(create_glowing_button("복사", "#"), unsafe_allow_html=True)
 
-# 블로그 글 작성 기능 실행
-write_blog()
+# 대표 이미지 생성 및 표시
+if st.button("대표 이미지 생성"):
+    img = create_image_with_text("대표 이미지")
+    st.image(img, caption="생성된 대표 이미지", use_column_width=True)
