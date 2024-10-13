@@ -6,236 +6,124 @@ import time
 import hmac
 import hashlib
 import base64
-import pyperclip
 
 # 페이지 레이아웃을 넓게 설정
 st.set_page_config(layout="wide", page_title="블로그 작성 도우미")
 
-# st.secrets에서 API 키 불러오기
-CUSTOMER_ID = st.secrets["general"]["CUSTOMER_ID"]
-API_KEY = st.secrets["general"]["API_KEY"]
-SECRET_KEY = st.secrets["general"]["SECRET_KEY"]
-client_id = st.secrets["general"]["client_id"]
-client_secret = st.secrets["general"]["client_secret"]
-
-# Constants
-BASE_URL = "https://api.naver.com"
-
-# 키워드 분석 관련 함수
-class Signature:
-    @staticmethod
-    def generate(timestamp, method, uri, secret_key):
-        message = f"{timestamp}.{method}.{uri}"
-        secret_key_bytes = bytes(secret_key, 'utf-8')
-        message_bytes = bytes(message, 'utf-8')
-        sign = hmac.new(secret_key_bytes, message_bytes, hashlib.sha256).digest()
-        signature = base64.b64encode(sign).decode('utf-8')
-        return signature
-
-def get_request_header(method, uri):
-    timestamp = str(round(time.time() * 1000))
-    signature = Signature.generate(timestamp, method, uri, SECRET_KEY)
-    return {
-        'Content-Type': 'application/json; charset=UTF-8',
-        'X-Timestamp': timestamp,
-        'X-API-KEY': API_KEY,
-        'X-Customer': str(CUSTOMER_ID),
-        'X-Signature': signature
+# CSS를 통해 전반적인 디자인 향상
+st.markdown("""
+    <style>
+    .main-title {
+        font-size: 3em;
+        font-weight: bold;
+        text-align: center;
+        color: #4CAF50; /* 녹색 색상 */
+        margin-bottom: 30px;
     }
+    .section-title {
+        font-size: 2em;
+        margin-top: 30px;
+        color: #FF5722; /* 주황색 */
+    }
+    .adsense-button {
+        background-color: #4CAF50;
+        color: white;
+        font-size: 16px;
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        width: 100%;
+        text-align: center;
+    }
+    .adsense-button:hover {
+        background-color: #45a049;
+        cursor: pointer;
+    }
+    .glow-on-hover {
+        width: 220px;
+        height: 50px;
+        border: none;
+        outline: none;
+        color: #fff;
+        background: red;
+        cursor: pointer;
+        position: relative;
+        z-index: 0;
+        border-radius: 10px;
+        transition: transform 0.3s;
+        margin: 0 auto;
+        display: block;
+    }
+    .glow-on-hover:before {
+        content: '';
+        background: linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet);
+        position: absolute;
+        top: -2px;
+        left: -2px;
+        background-size: 400%;
+        z-index: -1;
+        filter: blur(5px);
+        width: calc(100% + 4px);
+        height: calc(100% + 4px);
+        animation: glowing 20s linear infinite;
+        opacity: 0.8;
+        border-radius: 10px;
+    }
+    .glow-on-hover:hover {
+        transform: scale(1.05);
+    }
+    @keyframes glowing {
+        0% { background-position: 0 0; }
+        50% { background-position: 400% 0; }
+        100% { background-position: 0 0; }
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-@st.cache_data
-def get_keyword_analysis(keyword):
-    uri = '/keywordstool'
-    method = 'GET'
-    try:
-        r = requests.get(
-            BASE_URL + uri,
-            params={'hintKeywords': keyword, 'showDetail': 1},
-            headers=get_request_header(method, uri)
-        )
-        r.raise_for_status()
-        data = r.json()
-        
-        if 'keywordList' not in data:
-            st.error(f"API 응답에 'keywordList'가 없습니다. 응답: {data}")
-            return pd.DataFrame()
-        
-        df = pd.DataFrame(data['keywordList'])
-        if df.empty:
-            st.warning(f"'{keyword}'에 대한 키워드 데이터가 없습니다.")
-            return df
-        
-        # 데이터 처리 부분을 try-except로 감싸 오류 처리
-        try:
-            df['monthlyMobileQcCnt'] = df['monthlyMobileQcCnt'].apply(lambda x: int(str(x).replace('<', '').strip()))
-            df['monthlyPcQcCnt'] = df['monthlyPcQcCnt'].apply(lambda x: int(str(x).replace('<', '').strip()))
-            df = df[(df['monthlyMobileQcCnt'] >= 50) & (df['monthlyPcQcCnt'] >= 50)]
-            df.rename(
-                {'compIdx': '경쟁정도',
-                'monthlyMobileQcCnt': '월간검색수_모바일',
-                'monthlyPcQcCnt': '월간검색수_PC',
-                'relKeyword': '연관키워드'},
-                axis=1,
-                inplace=True
-            )
-            df['총검색수'] = df['월간검색수_PC'] + df['월간검색수_모바일']
-            df = df.sort_values('총검색수', ascending=False)
-        except Exception as e:
-            st.error(f"데이터 처리 중 오류 발생: {e}")
-            return pd.DataFrame()
-        
-        return df
-    except requests.RequestException as e:
-        st.error(f"API 요청 중 오류 발생: {e}")
-        return pd.DataFrame()
-    except Exception as e:
-        st.error(f"예상치 못한 오류 발생: {e}")
-        return pd.DataFrame()
+# 페이지 제목
+st.markdown('<div class="main-title">블로그 작성 도우미</div>', unsafe_allow_html=True)
 
-# 구글 애드센스 코드
+# 구글 애드센스 코드 섹션
+st.markdown('<div class="section-title">구글 애드센스 코드</div>', unsafe_allow_html=True)
+
 adsense_codes = {
-    "구라다": """<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8940400388075870" crossorigin="anonymous"></script>
-<!-- 구라다 -->
-<ins class="adsbygoogle"
-     style="display:block"
-     data-ad-client="ca-pub-8940400388075870"
-     data-ad-slot="5882156375"
-     data-ad-format="auto"
-     data-full-width-responsive="true"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>""",
-    "블로그스팟": """<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8940400388075870" crossorigin="anonymous"></script>
-<!-- 블로그스팟 -->
-<ins class="adsbygoogle"
-     style="display:block"
-     data-ad-client="ca-pub-8940400388075870"
-     data-ad-slot="9804410890"
-     data-ad-format="auto"
-     data-full-width-responsive="true"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>""",
-    "미라클E": """<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8940400388075870" crossorigin="anonymous"></script>
-<!-- 미라클E -->
-<ins class="adsbygoogle"
-     style="display:block"
-     data-ad-client="ca-pub-8940400388075870"
-     data-ad-slot="7074519437"
-     data-ad-format="auto"
-     data-full-width-responsive="true"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>"""
+    "구라다": "<script async src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8940400388075870' crossorigin='anonymous'></script>",
+    "블로그스팟": "<script async src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8940400388075870' crossorigin='anonymous'></script>",
+    "미라클E": "<script async src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8940400388075870' crossorigin='anonymous'></script>"
 }
 
-# 반짝이는 버튼 HTML 생성 함수
-def create_glowing_button(text, link):
-    return f"""
-<style>
-.glow-on-hover {{
-    width: 220px;
-    height: 50px;
-    border: none;
-    outline: none;
-    color: #fff;  /* 버튼 글자 색상 */
-    background: red;  /* 배경 색상 빨간색 */
-    cursor: pointer;
-    position: relative;
-    z-index: 0;
-    border-radius: 10px;
-    transition: transform 0.3s;  /* 마우스를 올렸을 때 부드럽게 확대하는 효과 */
-    margin: 0 auto;  /* 버튼 가운데 정렬 */
-    display: block;  /* 블록 요소로 설정하여 가운데 정렬 */
-}}
-.glow-on-hover:before {{
-    content: '';
-    background: linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet);  /* 무지개 색상 그라디언트 */
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    background-size: 400%;  /* 그라디언트를 더 크게 만들어 부드럽게 흐르게 함 */
-    z-index: -1;
-    filter: blur(5px);
-    width: calc(100% + 4px);
-    height: calc(100% + 4px);
-    animation: glowing 20s linear infinite;  /* 애니메이션 속도 조절 */
-    opacity: 0.8;  /* 약간의 투명도 추가 */
-    border-radius: 10px;
-}}
-.glow-on-hover:hover {{
-    transform: scale(1.05);  /* 마우스 오버 시 버튼 크기 증가 */
-}}
-.glow-on-hover:active {{
-    color: #000;  /* 버튼을 클릭할 때 글자 색상 변경 */
-}}
-@keyframes glowing {{
-    0% {{ background-position: 0 0; }}
-    50% {{ background-position: 400% 0; }}
-    100% {{ background-position: 0 0; }}
-}}
-</style>
-<a href="{link}" target="_blank">
-    <button class="glow-on-hover" type="button">{text}</button>
-</a>
-"""
+# 버튼을 컬럼으로 나누어서 더 보기 좋게
+cols = st.columns(3)
+for i, (name, code) in enumerate(adsense_codes.items()):
+    with cols[i]:
+        if st.button(f"{name} 광고 코드 복사"):
+            st.code(code, language='html')
+            st.success(f"{name} 광고 코드가 표시되었습니다. 복사하여 사용하세요.")
 
+# 반짝이는 버튼 생성 섹션
+st.markdown('<div class="section-title">반짝이는 버튼 생성</div>', unsafe_allow_html=True)
 
-
-
-
-# 메인 레이아웃 설정
-st.title('블로그 작성 도우미')
-
-# 구글 애드센스 코드 버튼
-st.subheader("구글 애드센스 코드")
-for name, code in adsense_codes.items():
-    if st.button(f"{name} 광고 코드 복사"):
-        st.code(code, language='html')
-        st.success(f"{name} 광고 코드가 표시되었습니다. 복사하여 사용하세요.")
-
-# 반짝이는 버튼 생성
-st.subheader("반짝이는 버튼 생성")
 button_text = st.text_input("버튼 텍스트 입력")
 button_link = st.text_input("버튼 링크 입력")
+
 if st.button("반짝이는 버튼 코드 생성"):
-    button_code = create_glowing_button(button_text, button_link)
+    button_code = f"""
+    <a href="{button_link}" target="_blank">
+        <button class="glow-on-hover" type="button">{button_text}</button>
+    </a>
+    """
     st.code(button_code, language='html')
     st.success("반짝이는 버튼 코드가 생성되었습니다. 위의 코드를 복사하여 사용하세요.")
     st.markdown(button_code, unsafe_allow_html=True)
 
-# 블로그 글 작성
-st.subheader("블로그 글 작성")
+# 블로그 작성 섹션
+st.markdown('<div class="section-title">블로그 글 작성</div>', unsafe_allow_html=True)
+
 text_format = st.radio("텍스트 형식 선택", ("HTML", "Markdown", "일반 텍스트"))
 input_text = st.text_area("블로그 글을 작성하세요", height=300)
 
-# 키워드 분석
-keywords = st.text_area('분석할 키워드를 입력하세요 (쉼표로 구분)', 'chatgpt, 인공지능').split(',')
-keywords_to_bold = st.text_input("굵게 표시할 키워드를 입력하세요 (쉼표로 구분)").split(',')
-
-# 이모티콘 추가 버튼
-emoji_list = [("😀", "😀"), ("😂", "😂"), ("😍", "😍"), ("👍", "👍"), ("🎉", "🎉")]
-cols = st.columns(len(emoji_list))
-for idx, (emoji, emoji_symbol) in enumerate(emoji_list):
-    with cols[idx]:
-        if st.button(emoji):
-            input_text += emoji_symbol
-            st.experimental_rerun()
-
-# 키워드 강조 기능
-if text_format == "HTML":
-    for keyword in keywords_to_bold:
-        keyword = keyword.strip()
-        if keyword:
-            input_text = re.sub(r'({})'.format(re.escape(keyword)), r'<strong>\1</strong>', input_text)
-elif text_format == "Markdown":
-    for keyword in keywords_to_bold:
-        keyword = keyword.strip()
-        if keyword:
-            input_text = re.sub(r'({})'.format(re.escape(keyword)), r'**\1**', input_text)
-
-# 작성된 글 미리보기
-st.subheader("작성된 블로그 글 미리 보기:")
+# 작성된 글 미리보기 섹션
+st.markdown('<div class="section-title">작성된 블로그 글 미리 보기</div>', unsafe_allow_html=True)
 if text_format == "HTML":
     st.markdown(input_text, unsafe_allow_html=True)
 elif text_format == "Markdown":
@@ -243,18 +131,11 @@ elif text_format == "Markdown":
 else:
     st.text(input_text)
 
-# 키워드 분석 결과
-st.subheader("키워드 분석 결과")
-if st.button('분석 실행'):
-    tmp_df = pd.DataFrame()
-    with st.spinner('키워드 분석 중...'):
-        for keyword in keywords:
-            keyword = keyword.strip()
-            if keyword:
-                df = get_keyword_analysis(keyword)
-                if not df.empty:
-                    tmp_df = pd.concat([tmp_df, df], axis=0)
-    if not tmp_df.empty:
-        st.dataframe(tmp_df)
-    else:
-        st.warning("분석 결과가 없습니다. 키워드를 확인하고 다시 시도해 주세요.")
+# 키워드 분석 섹션
+st.markdown('<div class="section-title">키워드 분석</div>', unsafe_allow_html=True)
+keywords = st.text_area('분석할 키워드를 입력하세요 (쉼표로 구분)', 'chatgpt, 인공지능').split(',')
+keywords_to_bold = st.text_input("굵게 표시할 키워드를 입력하세요 (쉼표로 구분)").split(',')
+
+# 키워드 분석 버튼
+if st.button('키워드 분석 실행'):
+    st.info("분석 결과가 표시될 예정입니다.")
