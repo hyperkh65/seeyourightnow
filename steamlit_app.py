@@ -195,6 +195,23 @@ def create_glowing_button(text, link):
 # 메인 레이아웃 설정
 st.title('블로그 작성 도우미')
 
+# 구글 애드센스 코드 버튼
+st.subheader("구글 애드센스 코드")
+for name, code in adsense_codes.items():
+    if st.button(f"{name} 광고 코드 복사"):
+        st.code(code, language='html')
+        st.success(f"{name} 광고 코드가 표시되었습니다. 복사하여 사용하세요.")
+
+# 반짝이는 버튼 생성
+st.subheader("반짝이는 버튼 생성")
+button_text = st.text_input("버튼 텍스트 입력")
+button_link = st.text_input("버튼 링크 입력")
+if st.button("반짝이는 버튼 코드 생성"):
+    button_code = create_glowing_button(button_text, button_link)
+    st.code(button_code, language='html')
+    st.success("반짝이는 버튼 코드가 생성되었습니다. 위의 코드를 복사하여 사용하세요.")
+    st.markdown(button_code, unsafe_allow_html=True)
+
 # 블로그 글 작성
 st.subheader("블로그 글 작성")
 text_format = st.radio("텍스트 형식 선택", ("HTML", "Markdown", "일반 텍스트"))
@@ -218,67 +235,34 @@ if text_format == "HTML":
     for keyword in keywords_to_bold:
         keyword = keyword.strip()
         if keyword:
-            input_text = re.sub(r'({})'.format(re.escape(keyword)), r'<strong>\1</strong>', input_text, flags=re.IGNORECASE)
+            input_text = re.sub(r'({})'.format(re.escape(keyword)), r'<strong>\1</strong>', input_text)
+elif text_format == "Markdown":
+    for keyword in keywords_to_bold:
+        keyword = keyword.strip()
+        if keyword:
+            input_text = re.sub(r'({})'.format(re.escape(keyword)), r'**\1**', input_text)
 
-# HTML 변환
-final_html = f"""
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>블로그 글</title>
-</head>
-<body>
-    <h1>블로그 글</h1>
-    <div>{input_text}</div>
-    <h2>구글 애드센스</h2>
-    {''.join(adsense_codes.values())}
-</body>
-</html>
-"""
+# 작성된 글 미리보기
+st.subheader("작성된 블로그 글 미리 보기:")
+if text_format == "HTML":
+    st.markdown(input_text, unsafe_allow_html=True)
+elif text_format == "Markdown":
+    st.markdown(input_text)
+else:
+    st.text(input_text)
 
-# HTML 미리보기
-st.subheader("HTML 미리보기")
-st.markdown(final_html, unsafe_allow_html=True)
-
-# 실제 페이지 미리보기
-st.subheader("실제 페이지 보기")
-st.components.v1.html(final_html, height=600)
-
-# 애드센스 키 3개 추가 및 복사 버튼
-st.subheader("애드센스 키")
-for code_name, code in adsense_codes.items():
-    col1, col2 = st.columns([5, 1])
-    with col1:
-        st.markdown(f"**{code_name}**")
-        st.markdown(code, unsafe_allow_html=True)
-    with col2:
-        if st.button("복사", key=code_name):
-            pyperclip.copy(code)
-            st.success("복사되었습니다!")
-
-# 버튼 생성기
-st.subheader("버튼 생성기")
-button_text = st.text_input("버튼 텍스트 입력")
-button_link = st.text_input("버튼 링크 입력")
-if st.button("버튼 생성"):
-    glowing_button_html = create_glowing_button(button_text, button_link)
-    st.markdown(glowing_button_html, unsafe_allow_html=True)
-
-# 옵션 섹션
-st.sidebar.title("옵션")
-st.sidebar.subheader("검색어 통계 보기")
-if st.sidebar.button("통계 확인"):
-    if keywords:
-        analysis_results = []
+# 키워드 분석 결과
+st.subheader("키워드 분석 결과")
+if st.button('분석 실행'):
+    tmp_df = pd.DataFrame()
+    with st.spinner('키워드 분석 중...'):
         for keyword in keywords:
-            df = get_keyword_analysis(keyword.strip())
-            if not df.empty:
-                analysis_results.append(df)
-        
-        if analysis_results:
-            combined_df = pd.concat(analysis_results, ignore_index=True)
-            st.sidebar.write(combined_df)
-        else:
-            st.sidebar.write("분석 결과가 없습니다.")
+            keyword = keyword.strip()
+            if keyword:
+                df = get_keyword_analysis(keyword)
+                if not df.empty:
+                    tmp_df = pd.concat([tmp_df, df], axis=0)
+    if not tmp_df.empty:
+        st.dataframe(tmp_df)
     else:
-        st.sidebar.write("키워드를 입력하세요.")
+        st.warning("분석 결과가 없습니다. 키워드를 확인하고 다시 시도해 주세요.")
