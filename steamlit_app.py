@@ -139,13 +139,14 @@ def create_glowing_button(text, link):
     border: none;
     outline: none;
     color: #fff;  /* 버튼 글자 색상 */
-    background: transparent;  /* 기본 배경을 투명으로 설정 */
+    background: red;  /* 배경 색상 빨간색 */
     cursor: pointer;
     position: relative;
     z-index: 0;
     border-radius: 10px;
-    overflow: hidden;  /* 내부 요소가 버튼 경계를 넘지 않도록 설정 */
     transition: transform 0.3s;  /* 마우스를 올렸을 때 부드럽게 확대하는 효과 */
+    margin: 0 auto;  /* 버튼 가운데 정렬 */
+    display: block;  /* 블록 요소로 설정하여 가운데 정렬 */
 }}
 .glow-on-hover:before {{
     content: '';
@@ -158,17 +159,19 @@ def create_glowing_button(text, link):
     filter: blur(5px);
     width: calc(100% + 4px);
     height: calc(100% + 4px);
-    animation: glowing 4s linear infinite;  /* 애니메이션 속도 조절 */
+    animation: glowing 20s linear infinite;  /* 애니메이션 속도 조절 */
     opacity: 0.8;  /* 약간의 투명도 추가 */
     border-radius: 10px;
 }}
 .glow-on-hover:hover:before {{
     opacity: 1;  /* 마우스 오버 시 불투명도 증가 */
-    transform: scale(1.1);  /* 마우스를 올렸을 때 살짝 확대 */
+}}
+.glow-on-hover:active {{
+    color: #000;  /* 버튼을 클릭할 때 글자 색상 변경 */
 }}
 @keyframes glowing {{
     0% {{ background-position: 0 0; }}
-    50% {{ background-position: 100% 0; }}  /* 그라디언트가 부드럽게 이동 */
+    50% {{ background-position: 400% 0; }}
     100% {{ background-position: 0 0; }}
 }}
 </style>
@@ -176,6 +179,7 @@ def create_glowing_button(text, link):
     <button class="glow-on-hover" type="button">{text}</button>
 </a>
 """
+
 
 
 
