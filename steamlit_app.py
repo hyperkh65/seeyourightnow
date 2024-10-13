@@ -138,13 +138,14 @@ def create_glowing_button(text, link):
     height: 50px;
     border: none;
     outline: none;
-    color: #fff;
+    color: #fff;  /* 버튼 글자 색상 */
     background: transparent;  /* 기본 배경을 투명으로 설정 */
     cursor: pointer;
     position: relative;
     z-index: 0;
     border-radius: 10px;
     overflow: hidden;  /* 내부 요소가 버튼 경계를 넘지 않도록 설정 */
+    transition: transform 0.3s;  /* 마우스를 올렸을 때 부드럽게 확대하는 효과 */
 }}
 .glow-on-hover:before {{
     content: '';
@@ -159,25 +160,11 @@ def create_glowing_button(text, link):
     height: calc(100% + 4px);
     animation: glowing 4s linear infinite;  /* 애니메이션 속도 조절 */
     opacity: 0.8;  /* 약간의 투명도 추가 */
-    transition: opacity .3s ease-in-out;
     border-radius: 10px;
-}}
-.glow-on-hover:active {{
-    color: #000;
 }}
 .glow-on-hover:hover:before {{
     opacity: 1;  /* 마우스 오버 시 불투명도 증가 */
-}}
-.glow-on-hover:after {{
-    z-index: -1;
-    content: '';
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    background: transparent;  /* 내부 배경을 투명으로 설정 */
-    left: 0;
-    top: 0;
-    border-radius: 10px;
+    transform: scale(1.1);  /* 마우스를 올렸을 때 살짝 확대 */
 }}
 @keyframes glowing {{
     0% {{ background-position: 0 0; }}
@@ -189,6 +176,7 @@ def create_glowing_button(text, link):
     <button class="glow-on-hover" type="button">{text}</button>
 </a>
 """
+
 
 
 # 메인 레이아웃 설정
