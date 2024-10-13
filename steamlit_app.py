@@ -218,7 +218,9 @@ text_format = st.radio("텍스트 형식 선택", ("HTML", "Markdown", "일반 �
 input_text = st.text_area("블로그 글을 작성하세요", height=300)
 
 # 키워드 분석
-keywords = st.text_area('분석할 키워드를 입력하세요 (쉼표로 구분)', 'chatgpt, 인공지능').
+keywords = st.text_area('분석할 키워드를 입력하세요 (쉼표로 구분)', 'chatgpt, 인공지능')
+keywords_to_bold = st.text_input("굵게 표시할 키워드 입력 (쉼표로 구분)", "")
+
 # 키워드 분석 버튼 및 결과 표시
 if st.button("키워드 분석 시작"):
     keyword_list = [kw.strip() for kw in keywords.split(',')]
