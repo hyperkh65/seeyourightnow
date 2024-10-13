@@ -6,6 +6,11 @@ import time
 import hmac
 import hashlib
 import base64
+from bs4 import BeautifulSoup
+from PIL import Image, ImageDraw, ImageFont
+from io import BytesIO
+import os
+import zipfile
 
 # 페이지 레이아웃을 넓게 설정
 st.set_page_config(layout="wide", page_title="블로그 작성 도우미")
@@ -17,13 +22,13 @@ st.markdown("""
         font-size: 3em;
         font-weight: bold;
         text-align: center;
-        color: #4CAF50; /* 녹색 색상 */
+        color: #4CAF50;
         margin-bottom: 30px;
     }
     .section-title {
         font-size: 2em;
         margin-top: 30px;
-        color: #FF5722; /* 주황색 */
+        color: #FF5722;
     }
     .adsense-button {
         background-color: #4CAF50;
@@ -92,7 +97,6 @@ adsense_codes = {
     "미라클E": "<script async src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8940400388075870' crossorigin='anonymous'></script>"
 }
 
-# 버튼을 컬럼으로 나누어서 더 보기 좋게
 cols = st.columns(3)
 for i, (name, code) in enumerate(adsense_codes.items()):
     with cols[i]:
@@ -136,6 +140,72 @@ st.markdown('<div class="section-title">키워드 분석</div>', unsafe_allow_ht
 keywords = st.text_area('분석할 키워드를 입력하세요 (쉼표로 구분)', 'chatgpt, 인공지능').split(',')
 keywords_to_bold = st.text_input("굵게 표시할 키워드를 입력하세요 (쉼표로 구분)").split(',')
 
-# 키워드 분석 버튼
 if st.button('키워드 분석 실행'):
     st.info("분석 결과가 표시될 예정입니다.")
+    # 키워드 분석 처리 로직 추가 가능
+
+# 티스토리 이미지 다운로드 섹션
+st.markdown('<div class="section-title">티스토리 이미지 다운로드</div>', unsafe_allow_html=True)
+
+blog_url = st.text_input('티스토리 블로그 주소를 입력하세요', '')
+
+# 이미지 저장 경로
+save_dir = "downloaded_images"
+os.makedirs(save_dir, exist_ok=True)
+
+# 티스토리 블로그에서 이미지 URL 추출
+def get_image_urls_from_blog(url):
+    try:
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        img_tags = soup.find_all('img')
+        img_urls = []
+        for img in img_tags:
+            img_url = img.get('src')
+            if img_url:
+                if not img_url.startswith('http'):
+                    img_url = 'http:' + img_url
+                img_urls.append(img_url)
+        return img_urls
+    except Exception as e:
+        st.error(f"페이지를 불러오는 중 오류가 발생했습니다: {e}")
+        return []
+
+# 이미지 메타 데이터를 제거하고 저장하는 함수
+def remove_metadata_and_save_image(image_url, idx):
+    try:
+        response = requests.get(image_url)
+        img = Image.open(BytesIO(response.content))
+        img_without_metadata = Image.new(img.mode, img.size)
+        img_without_metadata.putdata(list(img.getdata()))
+        
+        file_extension = image_url.split('.')[-1].split('?')[0]
+        safe_filename = re.sub(r'[^a-zA-Z0-9]', '_', image_url.split('/')[-1])
+        image_filename = f"image_{idx+1}_{safe_filename[:10]}.{file_extension}"
+        save_path = os.path.join(save_dir, image_filename)
+        
+        img_without_metadata.save(save_path, format=img.format)
+        return save_path
+    except Exception as e:
+        st.error(f"이미지를 처리하는 중 오류 발생: {e}")
+        return None
+
+# 이미지 다운로드 및 메타데이터 제거 실행
+if st.button('이미지 다운로드 및 메타데이터 제거'):
+    if blog_url:
+        img_urls = get_image_urls_from_blog(blog_url)
+        if img_urls:
+            st.write(f"총 {len(img_urls)}개의 이미지를 찾았습니다.")
+            image_paths = []
+            for idx, img_url in enumerate(img_urls):
+                save_path = remove_metadata_and_save_image(img_url, idx)
+                if save_path:
+                    image_paths.append(save_path)
+                    st.image(save_path, caption=f"Image {idx+1}", use_column_width=True)
+            
+            if image_paths:
+                st.success(f"{len(image_paths)}개의 이미지가 성공적으로 다운로드되었습니다.")
+        else:
+            st.warning("이미지를 찾지 못했습니다.")
+    else:
+        st.warning("블로그 URL을 입력해주세요.")
