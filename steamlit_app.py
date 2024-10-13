@@ -207,9 +207,9 @@ def create_title_image(text1, text2, text3):
     font = ImageFont.truetype(font_path, font_size)
 
     # 텍스트 색상 설정
-    text_color1 = (244, 206, 20)  # 첫 번째 줄 색상
-    text_color2 = (245, 247, 248)  # 두 번째 줄 색상
-    text_color3 = (244, 206, 20)  # 세 번째 줄 색상
+    text_color1 = (244, 206, 20)  # 첫 번째 줄 흰색
+    text_color2 = (245, 247, 248)  # 두 번째 줄 짙은 파란색
+    text_color3 = (244, 206, 20)  # 세 번째 줄 흰색
 
     # 줄 간격 조정
     line_spacing = 120  # 간격 조정
@@ -218,16 +218,16 @@ def create_title_image(text1, text2, text3):
     base_y = height // 3  # Y 좌표를 높여서 아래로 내림
 
     # 첫 번째 줄
-    text1_size = draw.textsize(text1, font=font)
-    draw.text(((width - text1_size[0]) // 2, base_y - text1_size[1] // 2), text1, fill=text_color1, font=font)
+    text1_bbox = draw.textbbox((0, 0), text1, font=font)  # 텍스트 박스 크기
+    draw.text(((width - (text1_bbox[2] - text1_bbox[0])) // 2, base_y - (text1_bbox[3] - text1_bbox[1]) // 2), text1, fill=text_color1, font=font)
 
     # 두 번째 줄
-    text2_size = draw.textsize(text2, font=font)
-    draw.text(((width - text2_size[0]) // 2, base_y + line_spacing - text2_size[1] // 2), text2, fill=text_color2, font=font)
+    text2_bbox = draw.textbbox((0, 0), text2, font=font)  # 텍스트 박스 크기
+    draw.text(((width - (text2_bbox[2] - text2_bbox[0])) // 2, base_y + line_spacing - (text2_bbox[3] - text2_bbox[1]) // 2), text2, fill=text_color2, font=font)
 
     # 세 번째 줄
-    text3_size = draw.textsize(text3, font=font)
-    draw.text(((width - text3_size[0]) // 2, base_y + 2 * line_spacing - text3_size[1] // 2), text3, fill=text_color3, font=font)
+    text3_bbox = draw.textbbox((0, 0), text3, font=font)  # 텍스트 박스 크기
+    draw.text(((width - (text3_bbox[2] - text3_bbox[0])) // 2, base_y + 2 * line_spacing - (text3_bbox[3] - text3_bbox[1]) // 2), text3, fill=text_color3, font=font)
 
     img.save(os.path.join(save_dir, "title_image.png"))
     return os.path.join(save_dir, "title_image.png")
