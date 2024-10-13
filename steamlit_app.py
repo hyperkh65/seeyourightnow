@@ -197,7 +197,7 @@ def remove_metadata_and_save_image(image_url, idx):
 # 대표 이미지 생성 함수
 def create_title_image(text1, text2, text3):
     width, height = 800, 800
-    background_color = (73, 94, 87)  # 배경색
+    background_color = (73, 94, 87)  # 짙은 하늘색 배경
     img = Image.new('RGB', (width, height), background_color)
     draw = ImageDraw.Draw(img)
 
@@ -208,19 +208,29 @@ def create_title_image(text1, text2, text3):
 
     # 텍스트 색상 설정
     text_color1 = (244, 206, 20)  # 첫 번째 줄 색상
-    text_color2 = (255, 255, 255)  # 두 번째 줄 색상
-    text_color3 = (255, 0, 0)  # 세 번째 줄 색상
+    text_color2 = (245, 247, 248)  # 두 번째 줄 색상
+    text_color3 = (244, 206, 20)  # 세 번째 줄 색상
 
-    # 텍스트 위치 계산
-    text1_width, text1_height = draw.textsize(text1, font=font)
-    text2_width, text2_height = draw.textsize(text2, font=font)
-    text3_width, text3_height = draw.textsize(text3, font=font)
+    # 줄 간격 조정
+    line_spacing = 120  # 간격 조정
 
-    draw.text(((width - text1_width) // 2, height // 4 - text1_height // 2), text1, font=font, fill=text_color1)
-    draw.text(((width - text2_width) // 2, height // 2 - text2_height // 2), text2, font=font, fill=text_color2)
-    draw.text(((width - text3_width) // 2, height * 3 // 4 - text3_height // 2), text3, font=font, fill=text_color3)
+    # 전체 텍스트를 아래로 내리기 위한 Y 좌표 조정
+    base_y = height // 3  # Y 좌표를 높여서 아래로 내림
 
-    return img
+    # 첫 번째 줄
+    text1_size = draw.textsize(text1, font=font)
+    draw.text(((width - text1_size[0]) // 2, base_y - text1_size[1] // 2), text1, fill=text_color1, font=font)
+
+    # 두 번째 줄
+    text2_size = draw.textsize(text2, font=font)
+    draw.text(((width - text2_size[0]) // 2, base_y + line_spacing - text2_size[1] // 2), text2, fill=text_color2, font=font)
+
+    # 세 번째 줄
+    text3_size = draw.textsize(text3, font=font)
+    draw.text(((width - text3_size[0]) // 2, base_y + 2 * line_spacing - text3_size[1] // 2), text3, fill=text_color3, font=font)
+
+    img.save(os.path.join(save_dir, "title_image.png"))
+    return os.path.join(save_dir, "title_image.png")
 
 # 이미지 생성 및 다운로드 버튼
 if st.button("대표 이미지 생성"):
