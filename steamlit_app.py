@@ -163,8 +163,8 @@ def create_glowing_button(text, link):
     opacity: 0.8;  /* 약간의 투명도 추가 */
     border-radius: 10px;
 }}
-.glow-on-hover:hover:before {{
-    opacity: 1;  /* 마우스 오버 시 불투명도 증가 */
+.glow-on-hover:hover {{
+    transform: scale(1.05);  /* 마우스 오버 시 버튼 크기 증가 */
 }}
 .glow-on-hover:active {{
     color: #000;  /* 버튼을 클릭할 때 글자 색상 변경 */
@@ -179,6 +179,7 @@ def create_glowing_button(text, link):
     <button class="glow-on-hover" type="button">{text}</button>
 </a>
 """
+
 
 
 
