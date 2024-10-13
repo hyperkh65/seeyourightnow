@@ -139,36 +139,34 @@ def create_glowing_button(text, link):
     border: none;
     outline: none;
     color: #fff;
-    background: #111;
+    background: transparent;  /* 기본 배경을 투명으로 설정 */
     cursor: pointer;
     position: relative;
     z-index: 0;
     border-radius: 10px;
+    overflow: hidden;  /* 내부 요소가 버튼 경계를 넘지 않도록 설정 */
 }}
 .glow-on-hover:before {{
     content: '';
-    background: linear-gradient(45deg, #ff0000, #ff7300, #fffb00, #48ff00, #00ffd5, #002bff, #7a00ff, #ff00c8, #ff0000);
+    background: linear-gradient(45deg, red, orange, yellow, green, blue, indigo, violet);  /* 무지개 색상 그라디언트 */
     position: absolute;
     top: -2px;
-    left:-2px;
-    background-size: 400%;
+    left: -2px;
+    background-size: 400%;  /* 그라디언트를 더 크게 만들어 부드럽게 흐르게 함 */
     z-index: -1;
     filter: blur(5px);
     width: calc(100% + 4px);
     height: calc(100% + 4px);
-    animation: glowing 20s linear infinite;
-    opacity: 0;
+    animation: glowing 4s linear infinite;  /* 애니메이션 속도 조절 */
+    opacity: 0.8;  /* 약간의 투명도 추가 */
     transition: opacity .3s ease-in-out;
     border-radius: 10px;
 }}
 .glow-on-hover:active {{
-    color: #000
-}}
-.glow-on-hover:active:after {{
-    background: transparent;
+    color: #000;
 }}
 .glow-on-hover:hover:before {{
-    opacity: 1;
+    opacity: 1;  /* 마우스 오버 시 불투명도 증가 */
 }}
 .glow-on-hover:after {{
     z-index: -1;
@@ -176,14 +174,14 @@ def create_glowing_button(text, link):
     position: absolute;
     width: 100%;
     height: 100%;
-    background: #111;
+    background: transparent;  /* 내부 배경을 투명으로 설정 */
     left: 0;
     top: 0;
     border-radius: 10px;
 }}
 @keyframes glowing {{
     0% {{ background-position: 0 0; }}
-    50% {{ background-position: 400% 0; }}
+    50% {{ background-position: 100% 0; }}  /* 그라디언트가 부드럽게 이동 */
     100% {{ background-position: 0 0; }}
 }}
 </style>
@@ -191,6 +189,7 @@ def create_glowing_button(text, link):
     <button class="glow-on-hover" type="button">{text}</button>
 </a>
 """
+
 
 # 메인 레이아웃 설정
 st.title('블로그 작성 도우미')
