@@ -5,7 +5,7 @@ import os
 import re
 from bs4 import BeautifulSoup  # BeautifulSoup import 추가
 
-def create_title_image(text1, text2, text3):
+def create_title_image(text1, text2, text3, selected_color):
     width, height = 800, 800
     background_color = (73, 94, 87)  # 짙은 하늘색 배경
     img = Image.new('RGB', (width, height), background_color)
@@ -16,8 +16,8 @@ def create_title_image(text1, text2, text3):
     font_size = 100
     font = ImageFont.truetype(font_path, font_size)
 
-    # 텍스트 색상 설정
-    text_color1 = (244, 206, 20)  # 첫 번째 줄 흰색
+    # 텍스트 색상 설정 (사용자가 선택한 색상)
+    text_color1 = selected_color  # 첫 번째 줄 사용자 선택 색상
     text_color2 = (245, 247, 248)  # 두 번째 줄 짙은 파란색
     text_color3 = (244, 206, 20)  # 세 번째 줄 흰색
 
@@ -39,8 +39,17 @@ def create_title_image(text1, text2, text3):
     text3_bbox = draw.textbbox((0, 0), text3, font=font)  # 텍스트 박스 크기
     draw.text(((width - (text3_bbox[2] - text3_bbox[0])) // 2, base_y + 2 * line_spacing - (text3_bbox[3] - text3_bbox[1]) // 2), text3, fill=text_color3, font=font)
 
+    # 텍스트 하단에 추가
+    bottom_text = f"{text1} | {text2} | {text3}"
+    bottom_font_size = 60  # 하단 텍스트 폰트 크기
+    bottom_font = ImageFont.truetype(font_path, bottom_font_size)
+    bottom_color = (255, 255, 255)  # 하단 텍스트 색상
+    bottom_bbox = draw.textbbox((0, 0), bottom_text, font=bottom_font)  # 텍스트 박스 크기
+    draw.text(((width - (bottom_bbox[2] - bottom_bbox[0])) // 2, height - 100), bottom_text, fill=bottom_color, font=bottom_font)
+
     img.save(os.path.join("downloaded_images", "title_image.png"))
     return os.path.join("downloaded_images", "title_image.png")
+
 
 def get_image_urls_from_blog(url):
     try:
