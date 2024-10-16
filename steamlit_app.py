@@ -263,23 +263,25 @@ if st.button("이미지 다운로드 및 링크 추출"):
 
     # 링크 출력
     st.markdown('<div class="section-title">추출된 링크 목록</div>', unsafe_allow_html=True)
-    for link_name, link_url in links:
-        col1, col2, col3 = st.columns([3, 6, 2])
-        with col1:
-            st.write(link_name)
-        with col2:
-            st.write(link_url)
-        with col3:
-            # 링크 복사 버튼
-            if st.button("복사", key=link_url):  # 각 링크에 대해 고유한 키를 사용하여 버튼 생성
-                st.success("링크가 복사되었습니다.")
-                # 클립보드에 복사하는 JavaScript 코드
-                js_code = f"""
-                    <script>
-                    navigator.clipboard.writeText('{link_url}');
-                    </script>
-                """
-                st.markdown(js_code, unsafe_allow_html=True)
+for link_name, link_url in links:
+    col1, col2, col3 = st.columns([3, 6, 2])
+    with col1:
+        st.write(link_name)
+    with col2:
+        st.write(link_url)
+    with col3:
+        # 링크 복사 버튼
+        # 각 링크의 이름과 URL을 결합하여 고유한 키 생성
+        unique_key = f"copy_button_{link_name}_{link_url}"
+        if st.button("복사", key=unique_key):  
+            st.success("링크가 복사되었습니다.")
+            # 클립보드에 복사하는 JavaScript 코드
+            js_code = f"""
+                <script>
+                navigator.clipboard.writeText('{link_url}');
+                </script>
+            """
+            st.markdown(js_code, unsafe_allow_html=True)
 
     # ZIP 파일 다운로드 링크 제공
     with open(zip_path, 'rb') as f:
