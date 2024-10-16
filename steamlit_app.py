@@ -113,7 +113,16 @@ if st.button('링크 추출'):
     if links:
         st.write(f"총 {len(links)}개의 링크를 찾았습니다:")
         for link_text, link_url in links:
-            st.markdown(f"[{link_text}]({link_url})", unsafe_allow_html=True)  # 추출된 링크를 버튼처럼 표시
+            col1, col2, col3 = st.columns([3, 6, 1])
+            with col1:
+                st.markdown(f"[{link_text}]({link_url})")  # 링크 텍스트
+            with col2:
+                st.markdown(f"({link_url})")  # 링크 주소
+            with col3:
+                if st.button("링크 복사", key=link_text):
+                    st.session_state.copied_link = link_url
+                    st.success("링크가 복사되었습니다!")
+
     else:
         st.write("링크를 찾지 못했습니다.")
 
@@ -193,13 +202,15 @@ def create_title_image(text1, text2, text3):
     text3_bbox = draw.textbbox((0, 0), text3, font=font)  # 텍스트 박스 크기
     draw.text(((width - (text3_bbox[2] - text3_bbox[0])) // 2, base_y + 2 * line_spacing - (text3_bbox[3] - text3_bbox[1]) // 2), text3, fill=text_color3, font=font)
 
-    img.save(os.path.join(save_dir, "title_image.png"))
-    return os.path.join(save_dir, "title_image.png")
+    # 이미지 저장
+    title_image_path = os.path.join(save_dir, 'title_image.png')
+    img.save(title_image_path)
+    return title_image_path
 
-# 이미지 다운로드 및 메타데이터 제거 실행 함수
+# 블로그에서 이미지 다운로드 및 메타데이터 제거
 def download_images_from_blog(blog_url):
-    if blog_url:
-        img_urls = get_image_urls_from_blog(blog_url)
+    img_urls = get_image_urls_from_blog(blog_url)
+    if img_urls:
         image_paths = []
         for idx, img_url in enumerate(img_urls):
             img_path = remove_metadata_and_save_image(img_url, idx)
