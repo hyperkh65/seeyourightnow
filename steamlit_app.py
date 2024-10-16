@@ -217,7 +217,7 @@ def remove_metadata_and_save_image(image_url, idx):
         st.error(f"이미지를 처리하는 중 오류 발생: {e}")
         return None
 
-# 대표 이미지 생성 함수 (계속)
+# 대표 이미지 생성 함수
 def create_title_image(text1, text2, text3):
     width = 800
     height = 400
@@ -286,3 +286,4 @@ if st.button("이미지 다운로드 및 링크 추출"):
         st.download_button('다운로드 ZIP 파일', f, file_name=zip_filename)
 
     st.success("이미지를 다운로드하고 링크를 추출했습니다.")
+
