@@ -178,125 +178,111 @@ def get_image_urls_from_blog(url):
         st.error(f"페이지를 불러오는 중 오류가 발생했습니다: {e}")
         return []
 
+# 블로그 본문에서 링크를 추출하는 함수
+def get_links_from_blog(url):
+    try:
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        links = []
+        for anchor in soup.find_all('a', href=True):
+            link_name = anchor.get_text(strip=True)
+            link_url = anchor['href']
+            links.append((link_name, link_url))
+        return links
+    except Exception as e:
+        st.error(f"링크를 불러오는 중 오류가 발생했습니다: {e}")
+        return []
+
 # 이미지 메타 데이터를 제거하는 함수
 def remove_metadata_and_save_image(image_url, idx):
     try:
         response = requests.get(image_url)
         img = Image.open(BytesIO(response.content))
+        
+        # 이미지 모드에 따라 저장 형식을 결정
+        if img.mode in ["RGBA", "P"]:
+            img = img.convert("RGB")  # JPEG로 저장하기 위해 RGB로 변환
+            
         img_without_metadata = Image.new(img.mode, img.size)
         img_without_metadata.putdata(list(img.getdata()))
         
-        # JPEG로 저장하기 위한 포맷 처리
-        if img.mode in ["RGBA", "P"]:  # RGBA 및 P 모드 처리
-            img = img.convert("RGB")
-
-        file_extension = 'png'  # PNG 포맷으로 저장
+        file_extension = image_url.split('.')[-1].split('?')[0]
         safe_filename = re.sub(r'[^a-zA-Z0-9]', '_', image_url.split('/')[-1])
         image_filename = f"image_{idx+1}_{safe_filename[:10]}.{file_extension}"
         save_path = os.path.join(save_dir, image_filename)
         
-        img_without_metadata.save(save_path, format='PNG')
+        img_without_metadata.save(save_path, format=img.format)
         return save_path
     except Exception as e:
         st.error(f"이미지를 처리하는 중 오류 발생: {e}")
         return None
 
-# 대표 이미지 생성 함수
+# 대표 이미지 생성 함수 (계속)
 def create_title_image(text1, text2, text3):
-    width, height = 800, 800
-    background_color = (73, 94, 87)  # 짙은 하늘색 배경
-    img = Image.new('RGB', (width, height), background_color)
-    draw = ImageDraw.Draw(img)
+    width = 800
+    height = 400
+    image = Image.new("RGB", (width, height), (255, 255, 255))
+    draw = ImageDraw.Draw(image)
 
     # 폰트 설정
-    font_path = "NanumGothicCoding-Bold.ttf"  # 로컬에서 사용하는 폰트
-    font_size = 100
-    font = ImageFont.truetype(font_path, font_size)
+    try:
+        font = ImageFont.truetype("NanumGothicCoding-Bold.ttf", 40)
+    except IOError:
+        font = ImageFont.load_default()
 
-    # 텍스트 색상 설정
-    text_color1 = (244, 206, 20)  # 첫 번째 줄 흰색
-    text_color2 = (245, 255, 250)  # 두 번째 줄 흰색
-    text_color3 = (245, 255, 250)  # 세 번째 줄 흰색
+    # 텍스트 위치 설정
+    draw.text((50, 50), text1, fill="black", font=font)
+    draw.text((50, 150), text2, fill="black", font=font)
+    draw.text((50, 250), text3, fill="black", font=font)
 
-    # 텍스트를 이미지 중앙에 배치
-    draw.text((width // 2, height // 4), text1, fill=text_color1, font=font, anchor="mm")
-    draw.text((width // 2, height // 2), text2, fill=text_color2, font=font, anchor="mm")
-    draw.text((width // 2, 3 * height // 4), text3, fill=text_color3, font=font, anchor="mm")
-
-    title_image_path = os.path.join(save_dir, "title_image.png")
-    img.save(title_image_path)
-    
+    title_image_path = os.path.join(save_dir, "title_image.jpg")
+    image.save(title_image_path)
     return title_image_path
 
-# 블로그 링크 분석 및 이미지 다운로드 섹션
-if st.button("이미지 다운로드"):
-    if blog_url:
-        image_urls = get_image_urls_from_blog(blog_url)
-        if image_urls:
-            title_image_path = create_title_image(title_text1, title_text2, title_text3)
+# 이미지와 링크 처리 및 다운로드 섹션
+if st.button("이미지 다운로드 및 링크 추출"):
+    img_urls = get_image_urls_from_blog(blog_url)
+    links = get_links_from_blog(blog_url)
 
-            # 이미지 다운로드 및 저장
-            saved_image_paths = []
-            for idx, image_url in enumerate(image_urls):
-                saved_image_path = remove_metadata_and_save_image(image_url, idx)
-                if saved_image_path:
-                    saved_image_paths.append(saved_image_path)
+    # 대표 이미지 생성
+    title_image_path = create_title_image(title_text1, title_text2, title_text3)
 
-            # ZIP 파일 생성
-            zip_filename = "downloaded_images.zip"
-            with zipfile.ZipFile(zip_filename, 'w') as zip_file:
-                # 제목 이미지 추가
-                zip_file.write(title_image_path, arcname=os.path.basename(title_image_path))
-                # 다운로드한 이미지 추가
-                for saved_image_path in saved_image_paths:
-                    zip_file.write(saved_image_path, arcname=os.path.basename(saved_image_path))
+    # ZIP 파일 생성
+    zip_filename = "downloaded_images.zip"
+    zip_path = os.path.join(save_dir, zip_filename)
 
-            with open(zip_filename, 'rb') as f:
-                st.download_button(
-                    label="다운로드 ZIP 파일",
-                    data=f,
-                    file_name=zip_filename,
-                    mime="application/zip"
-                )
-            st.success(f"{len(saved_image_paths)}개의 이미지를 다운로드했습니다.")
-        else:
-            st.warning("이미지를 찾을 수 없습니다.")
-    else:
-        st.warning("블로그 URL을 입력해 주세요.")
+    with zipfile.ZipFile(zip_path, 'w') as zip_file:
+        # 대표 이미지 추가
+        zip_file.write(title_image_path, os.path.basename(title_image_path))
 
-# 블로그 링크 섹션
-if blog_url:
-    st.markdown('<div class="section-title">블로그 링크</div>', unsafe_allow_html=True)
-    
-    # 블로그 제목
-    st.write(f"블로그 제목: [{blog_url}]({blog_url})")
-    
-    # 링크 복사 버튼
-    if st.button("링크 복사"):
-        st.markdown(f"[블로그 링크 복사]({blog_url})", unsafe_allow_html=True)
-        st.success("블로그 링크가 클립보드에 복사되었습니다.")
+        # 블로그 이미지 추가
+        for idx, img_url in enumerate(img_urls):
+            img_path = remove_metadata_and_save_image(img_url, idx)
+            if img_path:
+                zip_file.write(img_path, os.path.basename(img_path))
 
-    # 링크 이름 및 링크 리스트 생성
-    link_names = st.text_area("링크 이름 및 주소를 입력하세요 (형식: 이름, 주소)", height=100)
-    if st.button("링크 추가"):
-        if link_names:
-            links = link_names.split('\n')
-            for link in links:
-                if ',' in link:
-                    name, url = map(str.strip, link.split(',', 1))
-                    st.markdown(f"[{name}]({url})")
-                    if st.button(f"{name} 링크 복사"):
-                        st.markdown(f"[링크 복사]({url})", unsafe_allow_html=True)
-                        st.success(f"{name} 링크가 클립보드에 복사되었습니다.")
+    # 링크 출력
+    st.markdown('<div class="section-title">추출된 링크 목록</div>', unsafe_allow_html=True)
+    for link_name, link_url in links:
+        col1, col2, col3 = st.columns([3, 6, 2])
+        with col1:
+            st.write(link_name)
+        with col2:
+            st.write(link_url)
+        with col3:
+            # 링크 복사 버튼
+            if st.button("복사", key=link_url):  # 각 링크에 대해 고유한 키를 사용하여 버튼 생성
+                st.success("링크가 복사되었습니다.")
+                # 클립보드에 복사하는 JavaScript 코드
+                js_code = f"""
+                    <script>
+                    navigator.clipboard.writeText('{link_url}');
+                    </script>
+                """
+                st.markdown(js_code, unsafe_allow_html=True)
 
-# 필요 시 이미지 저장 폴더 삭제
-if st.button("이미지 저장 폴더 삭제"):
-    for filename in os.listdir(save_dir):
-        file_path = os.path.join(save_dir, filename)
-        try:
-            if os.path.isfile(file_path):
-                os.unlink(file_path)
-        except Exception as e:
-            st.error(f"파일 삭제 중 오류 발생: {e}")
-    st.success("저장된 이미지 파일을 삭제했습니다.")
+    # ZIP 파일 다운로드 링크 제공
+    with open(zip_path, 'rb') as f:
+        st.download_button('다운로드 ZIP 파일', f, file_name=zip_filename)
 
+    st.success("이미지를 다운로드하고 링크를 추출했습니다.")
