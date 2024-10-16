@@ -252,8 +252,9 @@ def create_title_image(text1, text2, text3):
     text3_bbox = draw.textbbox((0, 0), text3, font=font)  # 텍스트 박스 크기
     draw.text(((width - (text3_bbox[2] - text3_bbox[0])) // 2, base_y + 2 * line_spacing - (text3_bbox[3] - text3_bbox[1]) // 2), text3, fill=text_color3, font=font)
 
-    img.save(os.path.join(save_dir, "title_image.png"))
-    return os.path.join(save_dir, "title_image.png")
+    save_path = os.path.join(save_dir, "title_image.png")
+    img.save(save_path)
+    return save_path
 
 # 이미지 다운로드 및 메타데이터 제거 실행 함수
 def download_images_from_blog(blog_url):
@@ -267,6 +268,7 @@ def download_images_from_blog(blog_url):
             for idx, img_url in enumerate(img_urls):
                 save_path = remove_metadata_and_save_image(img_url, idx)
 
+                # 이미지에 텍스트
                 # 이미지에 텍스트 추가
                 if save_path:
                     # 이미지 열기
@@ -301,9 +303,29 @@ def download_images_from_blog(blog_url):
         else:
             st.write("이미지를 찾지 못했습니다.")
 
+# 대표 이미지 생성 및 표시
+if st.button("대표 이미지 생성"):
+    title_image_path = create_title_image(title_text1, title_text2, title_text3)
+    st.image(title_image_path, caption="대표 이미지", use_column_width=True)
+
 # 블로그에서 이미지 다운로드 버튼
 if st.button("블로그에서 이미지 다운로드"):
-    download_images_from_blog(blog_url)
+    image_paths = download_images_from_blog(blog_url)
+    if image_paths:
+        # ZIP 파일 생성
+        zip_path = os.path.join(save_dir, "downloaded_images.zip")
+        with zipfile.ZipFile(zip_path, 'w') as zipf:
+            for file in image_paths:
+                zipf.write(file, os.path.basename(file))
+        
+        # ZIP 파일 다운로드 버튼 생성
+        with open(zip_path, "rb") as file:
+            btn = st.download_button(
+                label="ZIP 파일 다운로드",
+                data=file,
+                file_name="downloaded_images.zip",
+                mime="application/zip"
+            )
 
 # 링크 추출 섹션
 st.markdown('<div class="section-title">블로그 링크 추출</div>', unsafe_allow_html=True)
@@ -311,9 +333,9 @@ st.markdown('<div class="section-title">블로그 링크 추출</div>', unsafe_a
 if st.button("블로그 링크 추출 실행"):
     links = get_links_from_blog(blog_url)
     if links:
-        for link_name, link_url in links:
+        for idx, (link_name, link_url) in enumerate(links):
             st.write(f"[{link_name}]({link_url})")
-            if st.button("복사", key=link_url):  # 각 링크에 대해 고유한 키를 사용하여 버튼 생성
+            if st.button("복사", key=f"copy_button_{idx}"):  # 각 링크에 대해 고유한 키를 사용하여 버튼 생성
                 st.success(f"{link_url} 링크가 복사되었습니다!")
     else:
         st.write("링크를 찾지 못했습니다.")
