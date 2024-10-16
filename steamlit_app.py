@@ -1,11 +1,16 @@
 import streamlit as st
+import pandas as pd
 import requests
 import re
-import os
-import zipfile
+import time
+import hmac
+import hashlib
+import base64
 from bs4 import BeautifulSoup
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
+import os
+import zipfile
 
 # 페이지 레이아웃을 넓게 설정
 st.set_page_config(layout="wide", page_title="블로그 작성 도우미")
@@ -24,6 +29,20 @@ st.markdown("""
         font-size: 2em;
         margin-top: 30px;
         color: #FF5722;
+    }
+    .adsense-button {
+        background-color: #4CAF50;
+        color: white;
+        font-size: 16px;
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        width: 100%;
+        text-align: center;
+    }
+    .adsense-button:hover {
+        background-color: #45a049;
+        cursor: pointer;
     }
     .glow-on-hover {
         width: 220px;
@@ -66,18 +85,29 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 사이드바 설정
-st.sidebar.header('옵션 설정')
+# 페이지 제목
+st.markdown('<div class="main-title">블로그 작성 도우미</div>', unsafe_allow_html=True)
 
-# 블로그 주소 입력 (사이드바로 이동)
-blog_url = st.sidebar.text_input('티스토리 블로그 주소를 입력하세요', '')
+# 구글 애드센스 코드 섹션
+st.markdown('<div class="section-title">구글 애드센스 코드</div>', unsafe_allow_html=True)
 
-# 대표 이미지 텍스트 입력 (사이드바로 이동)
-title_text1 = st.sidebar.text_input('대표 이미지 첫 번째 줄에 사용할 텍스트를 입력하세요', '')
-title_text2 = st.sidebar.text_input('대표 이미지 두 번째 줄에 사용할 텍스트를 입력하세요', '')
-title_text3 = st.sidebar.text_input('대표 이미지 세 번째 줄에 사용할 텍스트를 입력하세요', '')
+adsense_codes = {
+    "구라다": "<script async src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8940400388075870' crossorigin='anonymous'></script>",
+    "블로그스팟": "<script async src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8940400388075870' crossorigin='anonymous'></script>",
+    "미라클E": "<script async src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8940400388075870' crossorigin='anonymous'></script>"
+}
 
-# 반짝이는 버튼 만들기 (사이드바로 이동)
+# 버튼을 컬럼으로 나누어서 더 보기 좋게
+cols = st.columns(3)
+for i, (name, code) in enumerate(adsense_codes.items()):
+    with cols[i]:
+        if st.button(f"{name} 광고 코드 복사"):
+            st.code(code, language='html')
+            st.success(f"{name} 광고 코드가 표시되었습니다. 복사하여 사용하세요.")
+
+# 왼쪽 옵션 창에 버튼 만들기 및 대표 이미지 생성 섹션 추가
+st.sidebar.markdown('<div class="section-title">반짝이는 버튼 생성</div>', unsafe_allow_html=True)
+
 button_text = st.sidebar.text_input("버튼 텍스트 입력")
 button_link = st.sidebar.text_input("버튼 링크 입력")
 
@@ -87,47 +117,42 @@ if st.sidebar.button("반짝이는 버튼 코드 생성"):
         <button class="glow-on-hover" type="button">{button_text}</button>
     </a>
     """
-    st.code(button_code, language='html')
+    st.sidebar.code(button_code, language='html')
     st.sidebar.success("반짝이는 버튼 코드가 생성되었습니다. 위의 코드를 복사하여 사용하세요.")
-    st.markdown(button_code, unsafe_allow_html=True)
+    st.sidebar.markdown(button_code, unsafe_allow_html=True)
 
-# 블로그 본문에서 링크를 추출하는 함수
-def get_links_from_blog(url):
-    try:
-        response = requests.get(url)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        links = []
-        for a_tag in soup.find_all('a', href=True):
-            link_text = a_tag.text.strip()
-            link_url = a_tag['href']
-            links.append((link_text, link_url))
-        return links
-    except Exception as e:
-        st.error(f"링크를 불러오는 중 오류가 발생했습니다: {e}")
-        return []
+# 블로그 주소 입력 및 대표 이미지 텍스트 입력 섹션
+st.sidebar.markdown('<div class="section-title">이미지 다운로드 및 처리</div>', unsafe_allow_html=True)
+blog_url = st.sidebar.text_input('티스토리 블로그 주소를 입력하세요', '')
 
-# 링크 추출 및 표시
-st.markdown('<div class="section-title">블로그 본문에서 링크 추출</div>', unsafe_allow_html=True)
-if 'links' not in st.session_state:
-    st.session_state.links = []  # 세션 상태에 링크 저장
+# 대표 이미지 텍스트 입력
+title_text1 = st.sidebar.text_input('대표 이미지 첫 번째 줄에 사용할 텍스트를 입력하세요', '')
+title_text2 = st.sidebar.text_input('대표 이미지 두 번째 줄에 사용할 텍스트를 입력하세요', '')
+title_text3 = st.sidebar.text_input('대표 이미지 세 번째 줄에 사용할 텍스트를 입력하세요', '')
 
-if st.button('링크 추출'):
-    st.session_state.links = get_links_from_blog(blog_url)  # 사용자가 입력한 블로그 URL에서 링크 추출
+# 블로그 작성 섹션
+st.markdown('<div class="section-title">블로그 글 작성</div>', unsafe_allow_html=True)
 
-# 링크가 있는 경우 표시
-if st.session_state.links:
-    st.write(f"총 {len(st.session_state.links)}개의 링크를 찾았습니다:")
-    for idx, (link_text, link_url) in enumerate(st.session_state.links):
-        col1, col2, col3 = st.columns([3, 6, 1])
-        with col1:
-            st.markdown(f"[{link_text}]({link_url})")  # 링크 텍스트
-        with col2:
-            st.markdown(f"({link_url})")  # 링크 주소
-        with col3:
-            # 각 버튼의 key를 고유하게 하기 위해 인덱스 사용
-            if st.button("링크 복사", key=f"copy_{idx}"):
-                st.session_state.copied_link = link_url
-                st.success("링크가 복사되었습니다!")
+text_format = st.radio("텍스트 형식 선택", ("HTML", "Markdown", "일반 텍스트"))
+input_text = st.text_area("블로그 글을 작성하세요", height=300)
+
+# 작성된 글 미리보기 섹션
+st.markdown('<div class="section-title">작성된 블로그 글 미리 보기</div>', unsafe_allow_html=True)
+if text_format == "HTML":
+    st.markdown(input_text, unsafe_allow_html=True)
+elif text_format == "Markdown":
+    st.markdown(input_text)
+else:
+    st.text(input_text)
+
+# 키워드 분석 섹션
+st.markdown('<div class="section-title">키워드 분석</div>', unsafe_allow_html=True)
+keywords = st.text_area('분석할 키워드를 입력하세요 (쉼표로 구분)', 'chatgpt, 인공지능').split(',')
+keywords_to_bold = st.text_input("굵게 표시할 키워드를 입력하세요 (쉼표로 구분)").split(',')
+
+# 키워드 분석 버튼
+if st.button('키워드 분석 실행'):
+    st.info("분석 결과가 표시될 예정입니다.")
 
 # 이미지 저장 경로
 save_dir = "downloaded_images"
@@ -137,6 +162,9 @@ os.makedirs(save_dir, exist_ok=True)
 def get_image_urls_from_blog(url):
     try:
         response = requests.get(url)
+        if response.status_code != 200:
+            st.error(f"Failed to fetch the URL: {url} with status code: {response.status_code}")
+            return []
         soup = BeautifulSoup(response.text, 'html.parser')
         img_tags = soup.find_all('img')
         img_urls = []
@@ -148,7 +176,7 @@ def get_image_urls_from_blog(url):
                 img_urls.append(img_url)
         return img_urls
     except Exception as e:
-        st.error(f"페이지를 불러오는 중 오류가 발생했습니다: {e}")
+        st.error(f"Error while fetching images: {e}")
         return []
 
 # 이미지 메타 데이터를 제거하는 함수
@@ -183,69 +211,66 @@ def create_title_image(text1, text2, text3):
     font = ImageFont.truetype(font_path, font_size)
 
     # 텍스트 색상 설정
-    text_color1 = (244, 206, 20)  # 첫 번째 줄 흰색
-    text_color2 = (245, 247, 248)  # 두 번째 줄 짙은 파란색
-    text_color3 = (244, 206, 20)  # 세 번째 줄 흰색
+    text_color1 = (244, 206, 0)  # 노란색
+    text_color2 = (255, 255, 255)  # 흰색
+    text_color3 = (255, 0, 0)      # 빨간색
 
-    # 줄 간격 조정
-    line_spacing = 120  # 간격 조정
+    # 텍스트 그리기
+    draw.text((50, 100), text1, fill=text_color1, font=font)
+    draw.text((50, 300), text2, fill=text_color2, font=font)
+    draw.text((50, 500), text3, fill=text_color3, font=font)
 
-    # 전체 텍스트를 아래로 내리기 위한 Y 좌표 조정
-    base_y = height // 3  # Y 좌표를 높여서 아래로 내림
+    img.save(os.path.join(save_dir, "title_image.png"))
 
-    # 첫 번째 줄
-    text1_bbox = draw.textbbox((0, 0), text1, font=font)  # 텍스트 박스 크기
-    draw.text(((width - (text1_bbox[2] - text1_bbox[0])) // 2, base_y - (text1_bbox[3] - text1_bbox[1]) // 2), text1, fill=text_color1, font=font)
-
-    # 두 번째 줄
-    text2_bbox = draw.textbbox((0, 0), text2, font=font)  # 텍스트 박스 크기
-    draw.text(((width - (text2_bbox[2] - text2_bbox[0])) // 2, base_y + line_spacing - (text2_bbox[3] - text2_bbox[1]) // 2), text2, fill=text_color2, font=font)
-
-    # 세 번째 줄
-    text3_bbox = draw.textbbox((0, 0), text3, font=font)  # 텍스트 박스 크기
-    draw.text(((width - (text3_bbox[2] - text3_bbox[0])) // 2, base_y + line_spacing * 2 - (text3_bbox[3] - text3_bbox[1]) // 2), text3, fill=text_color3, font=font)
-
-    # 이미지 저장
-    title_image_path = os.path.join(save_dir, 'title_image.png')
-    img.save(title_image_path)
-    return title_image_path
-
-# 블로그에서 이미지 다운로드 및 메타데이터 제거
-def download_images_from_blog(blog_url):
-    img_urls = get_image_urls_from_blog(blog_url)
-    if img_urls:
+# 블로그 주소에서 이미지 가져오기 버튼
+if st.sidebar.button("블로그 이미지 가져오기"):
+    if blog_url:
+        image_urls = get_image_urls_from_blog(blog_url)
         image_paths = []
-        for idx, img_url in enumerate(img_urls):
-            img_path = remove_metadata_and_save_image(img_url, idx)
-            if img_path:
-                image_paths.append(img_path)
-        return image_paths
-    return []
+        for idx, image_url in enumerate(image_urls):
+            image_path = remove_metadata_and_save_image(image_url, idx)
+            if image_path:
+                image_paths.append(image_path)
 
-# 이미지들을 압축하여 다운로드할 수 있도록 zip 파일 생성
-def create_zip_file(image_paths):
-    zip_filename = "images.zip"
-    zip_filepath = os.path.join(save_dir, zip_filename)
-    with zipfile.ZipFile(zip_filepath, 'w') as zip_file:
-        for image_path in image_paths:
-            zip_file.write(image_path, os.path.basename(image_path))
-    return zip_filepath
+        if image_paths:
+            st.success(f"{len(image_paths)}개의 이미지를 다운로드했습니다.")
+            for image_path in image_paths:
+                st.image(image_path, caption=image_path.split('/')[-1], use_column_width=True)
+        else:
+            st.error("다운로드한 이미지가 없습니다.")
 
-# 사이드바에서 블로그 주소와 대표 이미지 텍스트를 입력받아 이미지를 다운로드하는 메인 프로세스
-if st.sidebar.button('이미지 다운로드 및 메타데이터 제거'):
-    image_paths = download_images_from_blog(blog_url)
-    
-    if title_text1 and title_text2 and title_text3:
-        title_image_path = create_title_image(title_text1, title_text2, title_text3)  # 대표 이미지 생성
-        image_paths.append(title_image_path)  # 대표 이미지 경로 추가
-        st.image(title_image_path, caption="대표 이미지", use_column_width=True)
-    
-    if image_paths:
-        zip_file_path = create_zip_file(image_paths)
-        with open(zip_file_path, "rb") as zip_file:
-            st.download_button(
-                label="이미지 압축 파일 다운로드",
-                data=zip_file,
-                file_name="images.zip",
-                mime="application/zip"
-            )
+# 대표 이미지 생성 버튼
+if st.sidebar.button("대표 이미지 생성"):
+    if title_text1 or title_text2 or title_text3:
+        create_title_image(title_text1, title_text2, title_text3)
+        st.success("대표 이미지가 생성되었습니다!")
+        st.image(os.path.join(save_dir, "title_image.png"), caption="대표 이미지", use_column_width=True)
+
+# 링크 목록 생성 및 유지
+link_list = []
+if st.button("링크 추가"):
+    link_name = st.text_input("링크 이름")
+    link_url = st.text_input("링크 주소")
+    if link_name and link_url:
+        link_list.append((link_name, link_url))
+        st.success("링크가 추가되었습니다.")
+
+# 링크 목록 출력
+st.markdown('<div class="section-title">링크 목록</div>', unsafe_allow_html=True)
+for link_name, link_url in link_list:
+    st.write(f"{link_name} ({link_url})")
+    if st.button(f"링크 복사: {link_name}", key=link_name):
+        st.markdown(f'<script>navigator.clipboard.writeText("{link_url}");</script>', unsafe_allow_html=True)
+        st.success(f"{link_name} 링크가 클립보드에 복사되었습니다.")
+
+# 압축 파일 다운로드 버튼
+if st.button("이미지 압축 다운로드"):
+    zip_filename = "downloaded_images.zip"
+    with zipfile.ZipFile(zip_filename, 'w') as zip_file:
+        for root, _, files in os.walk(save_dir):
+            for file in files:
+                zip_file.write(os.path.join(root, file), file)
+    st.success("이미지를 압축하여 다운로드할 수 있습니다.")
+    with open(zip_filename, 'rb') as f:
+        st.download_button('압축 파일 다운로드', f, file_name=zip_filename)
+
