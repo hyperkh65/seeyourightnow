@@ -1,38 +1,33 @@
-from PIL import Image, ImageDraw, ImageFont
-import requests
-from bs4 import BeautifulSoup
-import os
+import streamlit as st
+from image_utils import create_title_image, get_image_urls_from_blog, remove_metadata_and_save_image
 
-def get_image_urls_from_blog(blog_url):
-    """블로그에서 이미지 URL을 가져옵니다."""
-    try:
-        response = requests.get(blog_url)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        img_tags = soup.find_all('img')
-        image_urls = [img['src'] for img in img_tags if 'src' in img.attrs]
-        return image_urls
-    except Exception as e:
-        print(f"Error fetching images: {e}")
-        return []
+def main():
+    st.title("블로그 이미지 생성기")
 
-def create_title_image(text1, text2, text3, bg_color, text_color1, text_color2, text_color3):
-    """대표 이미지를 생성합니다."""
-    img = Image.new('RGB', (800, 400), bg_color)
-    draw = ImageDraw.Draw(img)
+    blog_url = st.text_input("블로그 URL 입력")
+    
+    if st.button("이미지 가져오기"):
+        img_urls = get_image_urls_from_blog(blog_url)
+        if img_urls:
+            for idx, img_url in enumerate(img_urls):
+                st.image(img_url, caption=f"이미지 {idx + 1}", use_column_width=True)
+        else:
+            st.error("이미지를 가져올 수 없습니다.")
 
-    # 폰트 설정 (폰트 경로 및 크기를 조정해야 할 수 있습니다)
-    font_path = "arial.ttf"  # 사용할 폰트 경로
-    font_size = 30
-    font1 = ImageFont.truetype(font_path, font_size)
-    font2 = ImageFont.truetype(font_path, font_size)
-    font3 = ImageFont.truetype(font_path, font_size)
+    # 텍스트 입력 받기
+    text1 = st.text_input("텍스트 1")
+    text2 = st.text_input("텍스트 2")
+    text3 = st.text_input("텍스트 3")
 
-    # 텍스트 위치 설정
-    draw.text((50, 50), text1, fill=text_color1, font=font1)
-    draw.text((50, 150), text2, fill=text_color2, font=font2)
-    draw.text((50, 250), text3, fill=text_color3, font=font3)
+    # 색상 선택
+    bg_color = st.color_picker("배경 색상 선택", "#FFFFFF")
+    text_color1 = st.color_picker("텍스트 1 색상 선택", "#000000")
+    text_color2 = st.color_picker("텍스트 2 색상 선택", "#000000")
+    text_color3 = st.color_picker("텍스트 3 색상 선택", "#000000")
 
-    # 이미지 저장
-    img_path = "generated_image.png"
-    img.save(img_path)
-    return img_path
+    if st.button("대표 이미지 생성"):
+        img_path = create_title_image(text1, text2, text3, bg_color, text_color1, text_color2, text_color3)
+        st.image(img_path, caption="생성된 제목 이미지", use_column_width=True)
+
+if __name__ == "__main__":
+    main()
