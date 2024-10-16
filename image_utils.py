@@ -1,8 +1,9 @@
 import requests
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont  # ImageDraw와 ImageFont 추가
 from io import BytesIO
 import os
 import re
+from bs4 import BeautifulSoup  # BeautifulSoup import 추가
 
 def create_title_image(text1, text2, text3):
     width, height = 800, 800
