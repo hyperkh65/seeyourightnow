@@ -226,7 +226,7 @@ def create_title_image(text1, text2, text3):
 
     # 폰트 설정
     font_path = "NanumGothicCoding-Bold.ttf"  # 로컬에서 사용하는 폰트
-    font_size = 100
+    font_size = 90
     font = ImageFont.truetype(font_path, font_size)
 
     # 텍스트 색상 설정
@@ -235,7 +235,7 @@ def create_title_image(text1, text2, text3):
     text_color3 = (255, 255, 255)  # 세 번째 줄 색상
 
     # 줄 간격 조정
-    line_spacing = 120  # 간격 조정
+    line_spacing = 140  # 간격 조정
 
     # 전체 텍스트를 아래로 내리기 위한 Y 좌표 조정
     base_y = height // 3  # Y 좌표를 높여서 아래로 내림
