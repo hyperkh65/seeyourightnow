@@ -200,21 +200,18 @@ def remove_metadata_and_save_image(image_url, idx):
         img_without_metadata = Image.new(img.mode, img.size)
         img_without_metadata.putdata(list(img.getdata()))
         
-        file_extension = image_url.split('.')[-1].split('?')[0]
-        safe_filename = re.sub(r'[^a-zA-Z0-9]', '_', image_url.split('/')[-1])
-        image_filename = f"image_{idx+1}_{safe_filename[:10]}.{file_extension}"
-        save_path = os.path.join(save_dir, image_filename)
-        
-        img_without_metadata.save(save_path, format=img.format)
-        return save_path
+        # 파일 포맷을 JPEG로 설정
+        img_format = "PNG" if img.format == "PNG" else "JPEG"
+        file_extension = "png" if img_format == "PNG" else "jpg"
+        saved_path = os.path.join(save_dir, f"image_{idx}.{file_extension}")
+        img_without_metadata.save(saved_path, format=img_format)  # 포맷 명시
+        return saved_path
     except Exception as e:
-        st.error(f"이미지를 처리하는 중 오류 발생: {e}")
+        st.error(f"이미지를 저장하는 중 오류가 발생했습니다: {e}")
         return None
 
 # 대표 이미지 생성 함수
-def create_title_image(text1, text2, text3):
-    width, height = 800, 800
-    background_color = (73, 94, 87)  # 짙은 하늘색 배경
+def create_title_image(text1, text2, text3, width=800, height=600, background_color=(0, 0, 0)):
     img = Image.new('RGB', (width, height), background_color)
     draw = ImageDraw.Draw(img)
 
@@ -254,11 +251,13 @@ if st.button("이미지 다운로드 및 처리"):
             if links:
                 st.markdown('<div class="section-title">블로그 링크 목록</div>', unsafe_allow_html=True)
                 for link_text, link_url in links:
+                    # 유일한 키 생성
+                    unique_key = f"{link_text}-{link_url}"  
                     col1, col2 = st.columns([3, 1])  # 열을 나눔
                     with col1:
                         st.markdown(f"[{link_text}]({link_url})")
                     with col2:
-                        if st.button("복사", key=link_url):  # 각 링크에 대해 고유한 키를 사용하여 버튼 생성
+                        if st.button("복사", key=unique_key):  # 각 링크에 대해 고유한 키를 사용하여 버튼 생성
                             st.session_state.copied_link = link_url
                             st.success(f"'{link_text}' 링크가 복사되었습니다!")
         else:
