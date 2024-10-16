@@ -1,9 +1,5 @@
-import requests
-from PIL import Image, ImageDraw, ImageFont  # ImageDraw와 ImageFont 추가
-from io import BytesIO
 import os
-import re
-from bs4 import BeautifulSoup  # BeautifulSoup import 추가
+from PIL import Image, ImageDraw, ImageFont, ImageColor
 
 def create_title_image(text1, text2, text3, bg_color, text_color1, text_color2, text_color3):
     width, height = 800, 800
@@ -37,37 +33,22 @@ def create_title_image(text1, text2, text3, bg_color, text_color1, text_color2, 
     img.save(os.path.join("downloaded_images", "title_image.png"))
     return os.path.join("downloaded_images", "title_image.png")
 
+# 이미지 하단에 텍스트 추가 함수
+def add_text_to_image(image_path, text):
+    img = Image.open(image_path)
+    draw = ImageDraw.Draw(img)
 
+    # 폰트 설정
+    font_path = "NanumGothicCoding-Bold.ttf"
+    font_size = 40
+    font = ImageFont.truetype(font_path, font_size)
 
-def get_image_urls_from_blog(url):
-    try:
-        response = requests.get(url)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        img_tags = soup.find_all('img')
-        img_urls = []
-        for img in img_tags:
-            img_url = img.get('src')
-            if img_url:
-                if not img_url.startswith('http'):
-                    img_url = 'http:' + img_url
-                img_urls.append(img_url)
-        return img_urls
-    except Exception as e:
-        raise Exception(f"페이지를 불러오는 중 오류가 발생했습니다: {e}")
+    # 텍스트 색상
+    text_color = (255, 255, 255)  # 흰색 텍스트
 
-def remove_metadata_and_save_image(image_url, idx):
-    try:
-        response = requests.get(image_url)
-        img = Image.open(BytesIO(response.content))
-        img_without_metadata = Image.new(img.mode, img.size)
-        img_without_metadata.putdata(list(img.getdata()))
-        
-        file_extension = image_url.split('.')[-1].split('?')[0]
-        safe_filename = re.sub(r'[^a-zA-Z0-9]', '_', image_url.split('/')[-1])
-        image_filename = f"image_{idx+1}_{safe_filename[:10]}.{file_extension}"
-        save_path = os.path.join("downloaded_images", image_filename)
-        
-        img_without_metadata.save(save_path, format=img.format)
-        return save_path
-    except Exception as e:
-        raise Exception(f"이미지를 처리하는 중 오류 발생: {e}")
+    # 하단 텍스트 박스 크기
+    text_bbox = draw.textbbox((0, 0), text, font=font)
+    draw.text(((img.width - (text_bbox[2] - text_bbox[0])) // 2, img.height - 60), text, fill=text_color, font=font)
+
+    # 수정된 이미지 저장
+    img.save(image_path)
