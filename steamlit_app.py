@@ -12,6 +12,13 @@ from io import BytesIO
 import os
 import zipfile
 
+if 'title_image_path' not in st.session_state:
+    st.session_state.title_image_path = None
+if 'image_paths' not in st.session_state:
+    st.session_state.image_paths = []
+if 'links' not in st.session_state:
+    st.session_state.links = []
+
 # 페이지 레이아웃을 넓게 설정
 st.set_page_config(layout="wide", page_title="블로그 작성 도우미")
 
@@ -305,20 +312,27 @@ def download_images_from_blog(blog_url):
 
 # 대표 이미지 생성 및 표시
 if st.button("대표 이미지 생성"):
-    title_image_path = create_title_image(title_text1, title_text2, title_text3)
-    st.image(title_image_path, caption="대표 이미지", use_column_width=True)
+    st.session_state.title_image_path = create_title_image(title_text1, title_text2, title_text3)
+    st.image(st.session_state.title_image_path, caption="대표 이미지", use_column_width=True)
 
 # 블로그에서 이미지 다운로드 버튼
 if st.button("블로그에서 이미지 다운로드"):
-    image_paths = download_images_from_blog(blog_url)
-    if image_paths:
-        # ZIP 파일 생성
+    st.session_state.image_paths = download_images_from_blog(blog_url)
+    if st.session_state.image_paths:
+        st.success(f"{len(st.session_state.image_paths)}개의 이미지가 성공적으로 다운로드되었습니다.")
+        for idx, path in enumerate(st.session_state.image_paths):
+            st.image(path, caption=f"Image {idx+1}", use_column_width=True)
+
+# ZIP 파일 다운로드 버튼
+if st.session_state.image_paths or st.session_state.title_image_path:
+    if st.button("ZIP 파일 생성 및 다운로드"):
         zip_path = os.path.join(save_dir, "downloaded_images.zip")
         with zipfile.ZipFile(zip_path, 'w') as zipf:
-            for file in image_paths:
+            if st.session_state.title_image_path:
+                zipf.write(st.session_state.title_image_path, os.path.basename(st.session_state.title_image_path))
+            for file in st.session_state.image_paths:
                 zipf.write(file, os.path.basename(file))
         
-        # ZIP 파일 다운로드 버튼 생성
         with open(zip_path, "rb") as file:
             btn = st.download_button(
                 label="ZIP 파일 다운로드",
@@ -331,11 +345,17 @@ if st.button("블로그에서 이미지 다운로드"):
 st.markdown('<div class="section-title">블로그 링크 추출</div>', unsafe_allow_html=True)
 
 if st.button("블로그 링크 추출 실행"):
-    links = get_links_from_blog(blog_url)
-    if links:
-        for idx, (link_name, link_url) in enumerate(links):
-            st.write(f"[{link_name}]({link_url})")
-            if st.button("복사", key=f"copy_button_{idx}"):  # 각 링크에 대해 고유한 키를 사용하여 버튼 생성
+    st.session_state.links = get_links_from_blog(blog_url)
+
+if st.session_state.links:
+    for idx, (link_name, link_url) in enumerate(st.session_state.links):
+        col1, col2, col3 = st.columns([2, 4, 1])
+        with col1:
+            st.write(f"{link_name}")
+        with col2:
+            st.write(f"{link_url}")
+        with col3:
+            if st.button("복사", key=f"copy_button_{idx}"):
                 st.success(f"{link_url} 링크가 복사되었습니다!")
-    else:
-        st.write("링크를 찾지 못했습니다.")
+else:
+    st.write("추출된 링크가 없습니다.")
