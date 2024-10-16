@@ -108,24 +108,26 @@ def get_links_from_blog(url):
 
 # 링크 추출 및 표시
 st.markdown('<div class="section-title">블로그 본문에서 링크 추출</div>', unsafe_allow_html=True)
-if st.button('링크 추출'):
-    links = get_links_from_blog(blog_url)  # 사용자가 입력한 블로그 URL에서 링크 추출
-    if links:
-        st.write(f"총 {len(links)}개의 링크를 찾았습니다:")
-        for idx, (link_text, link_url) in enumerate(links):
-            col1, col2, col3 = st.columns([3, 6, 1])
-            with col1:
-                st.markdown(f"[{link_text}]({link_url})")  # 링크 텍스트
-            with col2:
-                st.markdown(f"({link_url})")  # 링크 주소
-            with col3:
-                # 각 버튼의 key를 고유하게 하기 위해 인덱스 사용
-                if st.button("링크 복사", key=f"copy_{idx}"):
-                    st.session_state.copied_link = link_url
-                    st.success("링크가 복사되었습니다!")
+if 'links' not in st.session_state:
+    st.session_state.links = []  # 세션 상태에 링크 저장
 
-    else:
-        st.write("링크를 찾지 못했습니다.")
+if st.button('링크 추출'):
+    st.session_state.links = get_links_from_blog(blog_url)  # 사용자가 입력한 블로그 URL에서 링크 추출
+
+# 링크가 있는 경우 표시
+if st.session_state.links:
+    st.write(f"총 {len(st.session_state.links)}개의 링크를 찾았습니다:")
+    for idx, (link_text, link_url) in enumerate(st.session_state.links):
+        col1, col2, col3 = st.columns([3, 6, 1])
+        with col1:
+            st.markdown(f"[{link_text}]({link_url})")  # 링크 텍스트
+        with col2:
+            st.markdown(f"({link_url})")  # 링크 주소
+        with col3:
+            # 각 버튼의 key를 고유하게 하기 위해 인덱스 사용
+            if st.button("링크 복사", key=f"copy_{idx}"):
+                st.session_state.copied_link = link_url
+                st.success("링크가 복사되었습니다!")
 
 # 이미지 저장 경로
 save_dir = "downloaded_images"
