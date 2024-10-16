@@ -112,14 +112,15 @@ if st.button('링크 추출'):
     links = get_links_from_blog(blog_url)  # 사용자가 입력한 블로그 URL에서 링크 추출
     if links:
         st.write(f"총 {len(links)}개의 링크를 찾았습니다:")
-        for link_text, link_url in links:
+        for idx, (link_text, link_url) in enumerate(links):
             col1, col2, col3 = st.columns([3, 6, 1])
             with col1:
                 st.markdown(f"[{link_text}]({link_url})")  # 링크 텍스트
             with col2:
                 st.markdown(f"({link_url})")  # 링크 주소
             with col3:
-                if st.button("링크 복사", key=link_text):
+                # 각 버튼의 key를 고유하게 하기 위해 인덱스 사용
+                if st.button("링크 복사", key=f"copy_{idx}"):
                     st.session_state.copied_link = link_url
                     st.success("링크가 복사되었습니다!")
 
@@ -200,7 +201,7 @@ def create_title_image(text1, text2, text3):
 
     # 세 번째 줄
     text3_bbox = draw.textbbox((0, 0), text3, font=font)  # 텍스트 박스 크기
-    draw.text(((width - (text3_bbox[2] - text3_bbox[0])) // 2, base_y + 2 * line_spacing - (text3_bbox[3] - text3_bbox[1]) // 2), text3, fill=text_color3, font=font)
+    draw.text(((width - (text3_bbox[2] - text3_bbox[0])) // 2, base_y + line_spacing * 2 - (text3_bbox[3] - text3_bbox[1]) // 2), text3, fill=text_color3, font=font)
 
     # 이미지 저장
     title_image_path = os.path.join(save_dir, 'title_image.png')
