@@ -178,11 +178,31 @@ def get_image_urls_from_blog(url):
         st.error(f"페이지를 불러오는 중 오류가 발생했습니다: {e}")
         return []
 
+# 블로그 본문에서 링크를 추출하는 함수
+def get_links_from_blog(url):
+    try:
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        links = []
+        for anchor in soup.find_all('a', href=True):
+            link_name = anchor.get_text(strip=True)
+            link_url = anchor['href']
+            links.append((link_name, link_url))
+        return links
+    except Exception as e:
+        st.error(f"링크를 불러오는 중 오류가 발생했습니다: {e}")
+        return []
+
 # 이미지 메타 데이터를 제거하는 함수
 def remove_metadata_and_save_image(image_url, idx):
     try:
         response = requests.get(image_url)
         img = Image.open(BytesIO(response.content))
+        
+        # 이미지 모드에 따라 저장 형식을 결정
+        if img.mode in ["RGBA", "P"]:
+            img = img.convert("RGB")  # JPEG로 저장하기 위해 RGB로 변환
+            
         img_without_metadata = Image.new(img.mode, img.size)
         img_without_metadata.putdata(list(img.getdata()))
         
@@ -210,9 +230,9 @@ def create_title_image(text1, text2, text3):
     font = ImageFont.truetype(font_path, font_size)
 
     # 텍스트 색상 설정
-    text_color1 = (244, 206, 20)  # 첫 번째 줄 흰색
-    text_color2 = (245, 247, 248)  # 두 번째 줄 짙은 파란색
-    text_color3 = (244, 206, 20)  # 세 번째 줄 흰색
+    text_color1 = (244, 206, 20)  # 첫 번째 줄 색상
+    text_color2 = (245, 247, 248)  # 두 번째 줄 색상
+    text_color3 = (244, 206, 20)  # 세 번째 줄 색상
 
     # 줄 간격 조정
     line_spacing = 120  # 간격 조정
@@ -280,37 +300,20 @@ def download_images_from_blog(blog_url):
                 return image_paths
         else:
             st.write("이미지를 찾지 못했습니다.")
+
+# 블로그에서 이미지 다운로드 버튼
+if st.button("블로그에서 이미지 다운로드"):
+    download_images_from_blog(blog_url)
+
+# 링크 추출 섹션
+st.markdown('<div class="section-title">블로그 링크 추출</div>', unsafe_allow_html=True)
+
+if st.button("블로그 링크 추출 실행"):
+    links = get_links_from_blog(blog_url)
+    if links:
+        for link_name, link_url in links:
+            st.write(f"[{link_name}]({link_url})")
+            if st.button("복사", key=link_url):  # 각 링크에 대해 고유한 키를 사용하여 버튼 생성
+                st.success(f"{link_url} 링크가 복사되었습니다!")
     else:
-        st.write("블로그 URL을 입력해주세요.")
-    return []
-
-# 이미지 압축 파일 생성 함수
-def create_zip_file(file_paths, zip_name="images.zip"):
-    zip_path = os.path.join(save_dir, zip_name)
-    with zipfile.ZipFile(zip_path, 'w') as zipf:
-        for file in file_paths:
-            zipf.write(file, os.path.basename(file))
-    return zip_path
-
-# 이미지 다운로드 및 처리 버튼
-if st.button('이미지 다운로드 및 메타데이터 제거'):
-    image_paths = download_images_from_blog(blog_url)
-    
-    if title_text1 and title_text2 and title_text3:
-        title_image_path = create_title_image(title_text1, title_text2, title_text3)  # 대표 이미지 생성
-        image_paths.append(title_image_path)  # 대표 이미지 경로 추가
-        st.image(title_image_path, caption="대표 이미지", use_column_width=True)
-    
-    if image_paths:
-        zip_file_path = create_zip_file(image_paths)
-        with open(zip_file_path, "rb") as zip_file:
-            st.download_button(
-                label="이미지 압축 파일 다운로드",
-                data=zip_file,
-                file_name="images.zip",
-                mime="application/zip"
-            )
-
-# 메인 실행 부분
-if __name__ == "__main__":
-    st.write("블로그 작성 도우미를 사용해 주셔서 감사합니다!")
+        st.write("링크를 찾지 못했습니다.")
