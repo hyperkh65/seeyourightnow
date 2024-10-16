@@ -178,6 +178,20 @@ def get_image_urls_from_blog(url):
         st.error(f"페이지를 불러오는 중 오류가 발생했습니다: {e}")
         return []
 
+# 블로그에서 모든 링크 추출하는 함수
+def get_links_from_blog(url):
+    try:
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        links = []
+        for a in soup.find_all('a', href=True):
+            link_text = a.text.strip() or a['href']  # 링크 텍스트가 없으면 URL 사용
+            links.append((link_text, a['href']))
+        return links
+    except Exception as e:
+        st.error(f"링크를 불러오는 중 오류가 발생했습니다: {e}")
+        return []
+
 # 이미지 메타 데이터를 제거하는 함수
 def remove_metadata_and_save_image(image_url, idx):
     try:
@@ -204,113 +218,50 @@ def create_title_image(text1, text2, text3):
     img = Image.new('RGB', (width, height), background_color)
     draw = ImageDraw.Draw(img)
 
-    # 폰트 설정
-    font_path = "NanumGothicCoding-Bold.ttf"  # 로컬에서 사용하는 폰트
-    font_size = 100
-    font = ImageFont.truetype(font_path, font_size)
+    font = ImageFont.truetype("NanumGothicCoding-Bold.ttf", 40)
 
-    # 텍스트 색상 설정
-    text_color1 = (244, 206, 20)  # 첫 번째 줄 흰색
-    text_color2 = (245, 247, 248)  # 두 번째 줄 짙은 파란색
-    text_color3 = (244, 206, 20)  # 세 번째 줄 흰색
+    # 텍스트를 중앙에 그리기
+    text_y_positions = [200, 350, 500]
+    for i, text in enumerate([text1, text2, text3]):
+        draw.text((width // 2 - draw.textsize(text, font=font)[0] // 2, text_y_positions[i]), text, font=font, fill=(255, 255, 255))
 
-    # 줄 간격 조정
-    line_spacing = 120  # 간격 조정
+    return img
 
-    # 전체 텍스트를 아래로 내리기 위한 Y 좌표 조정
-    base_y = height // 3  # Y 좌표를 높여서 아래로 내림
-
-    # 첫 번째 줄
-    text1_bbox = draw.textbbox((0, 0), text1, font=font)  # 텍스트 박스 크기
-    draw.text(((width - (text1_bbox[2] - text1_bbox[0])) // 2, base_y - (text1_bbox[3] - text1_bbox[1]) // 2), text1, fill=text_color1, font=font)
-
-    # 두 번째 줄
-    text2_bbox = draw.textbbox((0, 0), text2, font=font)  # 텍스트 박스 크기
-    draw.text(((width - (text2_bbox[2] - text2_bbox[0])) // 2, base_y + line_spacing - (text2_bbox[3] - text2_bbox[1]) // 2), text2, fill=text_color2, font=font)
-
-    # 세 번째 줄
-    text3_bbox = draw.textbbox((0, 0), text3, font=font)  # 텍스트 박스 크기
-    draw.text(((width - (text3_bbox[2] - text3_bbox[0])) // 2, base_y + 2 * line_spacing - (text3_bbox[3] - text3_bbox[1]) // 2), text3, fill=text_color3, font=font)
-
-    img.save(os.path.join(save_dir, "title_image.png"))
-    return os.path.join(save_dir, "title_image.png")
-
-# 이미지 다운로드 및 메타데이터 제거 실행 함수
-def download_images_from_blog(blog_url):
+# 이미지 다운로드 및 처리 버튼
+if st.button("이미지 다운로드 및 처리"):
     if blog_url:
         img_urls = get_image_urls_from_blog(blog_url)
-        
         if img_urls:
-            st.write(f"총 {len(img_urls)}개의 이미지를 찾았습니다.")
-            image_paths = []
-            
-            for idx, img_url in enumerate(img_urls):
-                save_path = remove_metadata_and_save_image(img_url, idx)
+            zip_filename = "downloaded_images.zip"
+            with zipfile.ZipFile(zip_filename, 'w') as zipf:
+                for idx, img_url in enumerate(img_urls):
+                    saved_path = remove_metadata_and_save_image(img_url, idx)
+                    if saved_path:
+                        zipf.write(saved_path, arcname=os.path.basename(saved_path))
+            st.success(f"{len(img_urls)}개의 이미지를 다운로드했습니다.")
+            st.markdown(f"<a href='{zip_filename}' download>다운로드 ZIP 파일</a>", unsafe_allow_html=True)
 
-                # 이미지에 텍스트 추가
-                if save_path:
-                    # 이미지 열기
-                    img = Image.open(save_path)
-                    draw = ImageDraw.Draw(img)
-                    
-                    # 작은 폰트 설정 (왼쪽 하단 텍스트)
-                    small_font_size = 30  # 작게 설정
-                    small_font = ImageFont.truetype("NanumGothicCoding-Bold.ttf", small_font_size)
-                    
-                    # 텍스트 조합
-                    small_text = f"{title_text1}, {title_text2}, {title_text3}"
+            # 대표 이미지 생성 및 저장
+            if title_text1 or title_text2 or title_text3:
+                title_img = create_title_image(title_text1, title_text2, title_text3)
+                title_image_path = os.path.join(save_dir, "title_image.png")
+                title_img.save(title_image_path)
+                zipf.write(title_image_path, arcname="title_image.png")
+                st.image(title_img, caption="생성된 대표 이미지", use_column_width=True)
 
-                    # 테두리 효과를 주기 위한 텍스트를 두 번 그리기
-                    # 먼저 검정색으로 테두리를 그림
-                    outline_color = (0, 0, 0)  # 검정색
-                    for x_offset in [-1, 0, 1]:  # x축으로 좌우 1px씩 이동
-                        for y_offset in [-1, 0, 1]:  # y축으로 상하 1px씩 이동
-                            draw.text((10 + x_offset, img.height - 50 + y_offset), small_text, fill=outline_color, font=small_font)
-
-                    # 흰색으로 텍스트를 그림
-                    draw.text((10, img.height - 50), small_text, fill=(255, 255, 255), font=small_font)  # 왼쪽 하단에 위치
-                    
-                    # 수정된 이미지 저장
-                    img.save(save_path)
-                    image_paths.append(save_path)
-                    st.image(save_path, caption=f"Image {idx+1}", use_column_width=True)
-            
-            if image_paths:
-                st.success(f"{len(image_paths)}개의 이미지가 성공적으로 다운로드되었습니다.")
-                return image_paths
+            # 블로그 링크 추출 및 표시
+            links = get_links_from_blog(blog_url)
+            if links:
+                st.markdown('<div class="section-title">블로그 링크 목록</div>', unsafe_allow_html=True)
+                for link_text, link_url in links:
+                    col1, col2 = st.columns([3, 1])  # 열을 나눔
+                    with col1:
+                        st.markdown(f"[{link_text}]({link_url})")
+                    with col2:
+                        if st.button("복사", key=link_url):  # 각 링크에 대해 고유한 키를 사용하여 버튼 생성
+                            st.session_state.copied_link = link_url
+                            st.success(f"'{link_text}' 링크가 복사되었습니다!")
         else:
             st.write("이미지를 찾지 못했습니다.")
     else:
         st.write("블로그 URL을 입력해주세요.")
-    return []
-
-# 이미지 압축 파일 생성 함수
-def create_zip_file(file_paths, zip_name="images.zip"):
-    zip_path = os.path.join(save_dir, zip_name)
-    with zipfile.ZipFile(zip_path, 'w') as zipf:
-        for file in file_paths:
-            zipf.write(file, os.path.basename(file))
-    return zip_path
-
-# 이미지 다운로드 및 처리 버튼
-if st.button('이미지 다운로드 및 메타데이터 제거'):
-    image_paths = download_images_from_blog(blog_url)
-    
-    if title_text1 and title_text2 and title_text3:
-        title_image_path = create_title_image(title_text1, title_text2, title_text3)  # 대표 이미지 생성
-        image_paths.append(title_image_path)  # 대표 이미지 경로 추가
-        st.image(title_image_path, caption="대표 이미지", use_column_width=True)
-    
-    if image_paths:
-        zip_file_path = create_zip_file(image_paths)
-        with open(zip_file_path, "rb") as zip_file:
-            st.download_button(
-                label="이미지 압축 파일 다운로드",
-                data=zip_file,
-                file_name="images.zip",
-                mime="application/zip"
-            )
-
-# 메인 실행 부분
-if __name__ == "__main__":
-    st.write("블로그 작성 도우미를 사용해 주셔서 감사합니다!")
