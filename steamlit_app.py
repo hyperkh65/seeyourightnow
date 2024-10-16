@@ -215,7 +215,7 @@ def create_title_image(text1, text2, text3):
 
     # 텍스트 색상 설정
     text_color1 = (244, 206, 20)  # 첫 번째 줄 흰색
-        text_color2 = (245, 255, 250)  # 두 번째 줄 흰색
+    text_color2 = (245, 255, 250)  # 두 번째 줄 흰색
     text_color3 = (245, 255, 250)  # 세 번째 줄 흰색
 
     # 텍스트를 이미지 중앙에 배치
