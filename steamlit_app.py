@@ -220,7 +220,7 @@ def remove_metadata_and_save_image(image_url, idx):
 # 대표 이미지 생성 함수
 def create_title_image(text1, text2, text3):
     width, height = 800, 800
-    background_color = (73, 94, 87)  # 짙은 하늘색 배경
+    background_color = (0, 107, 255)  # 짙은 하늘색 배경
     img = Image.new('RGB', (width, height), background_color)
     draw = ImageDraw.Draw(img)
 
@@ -230,9 +230,9 @@ def create_title_image(text1, text2, text3):
     font = ImageFont.truetype(font_path, font_size)
 
     # 텍스트 색상 설정
-    text_color1 = (244, 206, 20)  # 첫 번째 줄 색상
-    text_color2 = (245, 247, 248)  # 두 번째 줄 색상
-    text_color3 = (244, 206, 20)  # 세 번째 줄 색상
+    text_color1 = (255, 255, 255)  # 첫 번째 줄 색상
+    text_color2 = (255, 241, 0)  # 두 번째 줄 색상
+    text_color3 = (255, 255, 255)  # 세 번째 줄 색상
 
     # 줄 간격 조정
     line_spacing = 120  # 간격 조정
