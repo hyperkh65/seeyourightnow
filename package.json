@@ -1,0 +1,23 @@
+{
+  "name": "sourcing-os",
+  "private": true,
+  "version": "0.1.0",
+  "description": "White-label AI Sourcing OS — multi-tenant sourcing ERP & SaaS platform",
+  "packageManager": "pnpm@10.33.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter @sos/api --filter @sos/web dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r --filter !@sos/e2e test",
+    "test:e2e": "pnpm --filter @sos/e2e test",
+    "db:migrate": "pnpm --filter @sos/api db:migrate",
+    "db:seed": "pnpm --filter @sos/api db:seed",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "typescript": "5.9.3"
+  }
+}
