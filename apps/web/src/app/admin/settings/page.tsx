@@ -7,6 +7,7 @@ import {
   Building2,
   Calculator,
   CheckCircle2,
+  Coins,
   FileText,
   Globe,
   Hash,
@@ -71,6 +72,13 @@ const GROUPS: Array<{
         icon: Calculator,
       },
       { href: '/admin/settings/bank', label: '입금 계좌', desc: '견적서·인보이스에 표시', icon: Landmark },
+      {
+        href: '/admin/settings/fx',
+        label: '환율',
+        desc: '원가 계산용 환율과 출처',
+        icon: Coins,
+        perm: 'cost.read',
+      },
       {
         href: '/admin/settings/numbering',
         label: '문서 번호',

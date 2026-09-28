@@ -2,6 +2,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { systemDb, withTenant } from '../db/client.js';
 import { apiConnections, shipments, tenants } from '../db/schema/index.js';
 import { logger } from '../lib/logger.js';
+import { shipmentsAwaitingCustoms } from '../services/customs.js';
 import { enqueue } from '../services/jobs.js';
 
 /**
@@ -43,6 +44,20 @@ const SCHEDULES: Schedule[] = [
           .where(sql`${shipments.status} not in ('DELIVERED','CANCELLED','PLANNED')`);
         for (const s of active)
           await enqueue(tx, t, 'tracking.carrier', { shipmentId: s.id }, { dedupeKey: `track:${s.id}:${b}` });
+        const [unipass] = await tx
+          .select({ id: apiConnections.id })
+          .from(apiConnections)
+          .where(and(eq(apiConnections.provider, 'UNIPASS'), eq(apiConnections.enabled, true)))
+          .limit(1);
+        if (unipass)
+          for (const s of await shipmentsAwaitingCustoms(tx))
+            await enqueue(
+              tx,
+              t,
+              'customs.unipass',
+              { shipmentId: s.id },
+              { dedupeKey: `customs:${s.id}:${b}` },
+            );
       });
     },
   },

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { and, eq, isNull } from 'drizzle-orm';
 import type { Role } from '@sos/core';
 import { closeCache } from '../lib/cache.js';
@@ -199,6 +200,10 @@ export async function seedAll(opts: { demo?: boolean } = {}): Promise<{ demoId: 
  */
 async function main(): Promise<void> {
   const prod = process.env.NODE_ENV === 'production';
+  const pwFile = process.env.SEED_SUPERADMIN_PASSWORD_FILE;
+  if (!process.env.SEED_SUPERADMIN_PASSWORD && pwFile) {
+    process.env.SEED_SUPERADMIN_PASSWORD = readFileSync(pwFile, 'utf8').trim();
+  }
   const mode = process.env.SEED_MODE ?? (prod ? 'base' : 'demo');
   if (mode === 'base') {
     if (prod && !process.env.SEED_SUPERADMIN_PASSWORD) {

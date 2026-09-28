@@ -81,6 +81,7 @@ const SOURCE_LABEL: Record<string, string> = {
   CARRIER_CONFIRMED: '선사 확인',
   AIS_INFERRED: 'AIS 추정',
   FORWARDER_REPORTED: '포워더 보고',
+  CUSTOMS_API: '관세청 UNI-PASS',
   MANUAL: '담당자 입력',
 };
 const ETA_LABEL: Record<string, string> = {

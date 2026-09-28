@@ -75,7 +75,6 @@ const envSchema = z.object({
 
   WEBAUTHN_RP_NAME: z.string().default('Sourcing OS'),
 
-  OTEL_EXPORTER_OTLP_ENDPOINT: z.string().optional(),
   SENTRY_DSN: z.string().optional(),
 
   WORKER_CONCURRENCY: z.coerce.number().default(4),

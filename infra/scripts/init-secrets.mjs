@@ -10,6 +10,8 @@ const files = {
   app_signing_key: () => randomBytes(48).toString('base64url'),
   secrets_master_key: () => randomBytes(32).toString('base64'),
   worker_token: () => randomBytes(32).toString('base64url'),
+  // One-time password for the production bootstrap super admin (SEED_MODE=base); MFA is forced on first login.
+  initial_admin_password: () => randomBytes(18).toString('base64url'),
 };
 let uid = 0;
 let gid = 0;

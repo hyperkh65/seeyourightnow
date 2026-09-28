@@ -157,6 +157,24 @@ describe('service units', () => {
     expect(render('{{money v "KRW"}}', { v: '1234567.5' })).toBe('₩1,234,568');
   });
 
+  it('UNI-PASS cargo progress XML is parsed and mapped to customs statuses', async () => {
+    const { parseUnipassCargo, mapUnipassStatus } = await import('../src/services/customs.js');
+    const xml = `<cargCsclPrgsInfoQryRtnVo><tCnt>1</tCnt><ntceInfo></ntceInfo>
+      <cargCsclPrgsInfoQryVo><csclPrgsStts>수입신고수리</csclPrgsStts><prgsStts>반출완료</prgsStts></cargCsclPrgsInfoQryVo>
+      <cargCsclPrgsInfoDtlQryVo><cargTrcnRelaBsopTpcd>입항보고</cargTrcnRelaBsopTpcd><prcsDttm>20260920093000</prcsDttm></cargCsclPrgsInfoDtlQryVo>
+      <cargCsclPrgsInfoDtlQryVo><cargTrcnRelaBsopTpcd>수입신고수리</cargTrcnRelaBsopTpcd><prcsDttm>20260921140512</prcsDttm></cargCsclPrgsInfoDtlQryVo>
+    </cargCsclPrgsInfoQryRtnVo>`;
+    const r = parseUnipassCargo(xml);
+    expect(r.found).toBe(true);
+    expect(r.status).toBe('CLEARED');
+    expect(r.steps).toHaveLength(2);
+    expect(r.steps[1]!.at!.toISOString()).toBe('2026-09-21T05:05:12.000Z');
+    expect(parseUnipassCargo('<x><tCnt>0</tCnt><ntceInfo>조회 결과 없음</ntceInfo></x>').found).toBe(false);
+    expect(mapUnipassStatus('수입신고')).toBe('IN_PROGRESS');
+    expect(mapUnipassStatus('검사대상 선별')).toBe('HOLD');
+    expect(mapUnipassStatus('')).toBe(null);
+  });
+
   it('templates saved before the helper rename still render (number/date aliases)', () => {
     const data = { number: 'QT-2026-0001', items: [{ quantity: 1500 }], date: '2026-01-02' };
     expect(render('{{number}}|{{#each items}}{{number quantity}}{{/each}}|{{num 1500}}|{{date}}', data)).toBe(

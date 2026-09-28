@@ -5,6 +5,7 @@
 import '../services/notify.js';
 import '../services/sourcing/pipeline.js';
 import '../services/tracking.js';
+import '../services/customs.js';
 import './maintenance.js';
 
 export function registerAllJobs(): void {

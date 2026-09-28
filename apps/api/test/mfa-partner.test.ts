@@ -138,3 +138,31 @@ describe('expert/partner portal sees only assigned work', () => {
     expect(audit.body).toContain('****6789');
   });
 });
+
+describe('manual FX rates', () => {
+  it('require margin permission + step-up and keep source/date provenance', async () => {
+    const body = {
+      base: 'CNY',
+      rate: '191.25',
+      rateDate: '2026-09-27',
+      source: '테스트은행 고시',
+      verification: 'PARTNER_VERIFIED',
+    };
+    const sales = await client('demo.localhost', 'sales@demo.local');
+    expect((await sales.post('/fx/rates', body)).statusCode).toBe(403);
+    const owner = await client('demo.localhost', 'owner@demo.local');
+    let r = await owner.post('/fx/rates', body);
+    if (r.statusCode === 403) {
+      expect((await owner.post('/auth/step-up', { password: PASSWORD })).statusCode).toBe(200);
+      r = await owner.post('/fx/rates', body);
+    }
+    expect(r.statusCode).toBe(201);
+    expect((await owner.post('/fx/rates', { ...body, rate: '0' })).statusCode).toBe(400);
+    const list = json<{ items: Array<{ base: string; rate: string; source: string; rateDate: string }> }>(
+      await owner.get('/fx/rates'),
+    );
+    const cny = list.items.find((x) => x.base === 'CNY')!;
+    expect(cny.source).toBeTruthy();
+    expect(cny.rateDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});

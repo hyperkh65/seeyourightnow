@@ -13,6 +13,7 @@ import { AppError, notFound } from '../lib/errors.js';
 import { db, isStaff, requireFeature, requirePerm, tenantOf, userOf } from '../http/context.js';
 import type { App } from '../http/types.js';
 import { audit } from '../services/audit.js';
+import { applyCustomsStatus } from '../services/customs.js';
 import { enqueue } from '../services/jobs.js';
 import { notifyEvent } from '../services/notify.js';
 import { nextNumber } from '../services/settings.js';
@@ -321,50 +322,7 @@ export async function shipmentRoutes(app: App) {
       return db(req, async (tx) => {
         const [s] = await tx.select().from(shipments).where(eq(shipments.id, req.params.id)).limit(1);
         if (!s) throw notFound();
-        await tx
-          .update(shipments)
-          .set({ customsStatus: req.body.status, updatedAt: new Date() })
-          .where(eq(shipments.id, s.id));
-        await tx.insert(shipmentEvents).values({
-          tenantId: tenant.id,
-          shipmentId: s.id,
-          eventType: 'CUSTOMS',
-          source: 'MANUAL',
-          occurredAt: new Date(),
-          locationCode: s.destinationPort,
-          note: `${req.body.status} ${req.body.note}`.trim(),
-        });
-        if (req.body.status === 'CLEARED') {
-          await completeStep(tx, tenant.id, s.projectId, 'CUSTOMS', user.id);
-          await notifyEvent(
-            tx,
-            tenant.id,
-            'CUSTOMS_COMPLETED',
-            s.projectId,
-            {},
-            { dedupeKey: `customs:${s.id}` },
-          );
-        }
-        if (req.body.status === 'HOLD') {
-          const [p] = await tx
-            .select()
-            .from(sourcingProjects)
-            .where(eq(sourcingProjects.id, s.projectId))
-            .limit(1);
-          await tx
-            .update(sourcingProjects)
-            .set({
-              attention: [
-                ...(p?.attention ?? []),
-                {
-                  kind: 'CUSTOMS_HOLD',
-                  message: req.body.note || '통관 보류',
-                  since: new Date().toISOString(),
-                },
-              ],
-            })
-            .where(eq(sourcingProjects.id, s.projectId));
-        }
+        await applyCustomsStatus(tx, tenant.id, s, req.body.status, req.body.note, 'MANUAL', user.id);
         await audit(tx, req, {
           action: 'shipment.customs',
           entityType: 'shipment',
@@ -438,6 +396,13 @@ export async function shipmentRoutes(app: App) {
           'tracking.carrier',
           { shipmentId: req.params.id },
           { priority: 30, dedupeKey: `track:${req.params.id}:${Math.floor(Date.now() / 60000)}` },
+        );
+        await enqueue(
+          tx,
+          tenant.id,
+          'customs.unipass',
+          { shipmentId: req.params.id },
+          { priority: 30, dedupeKey: `customs:${req.params.id}:${Math.floor(Date.now() / 60000)}` },
         );
         await enqueue(
           tx,

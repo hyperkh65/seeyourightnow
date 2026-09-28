@@ -19,6 +19,7 @@ import {
   freightQuotes,
   freightRates,
   freightRfqs,
+  fxRates,
   hsClassifications,
   hsCodes,
   listingPriceHistory,
@@ -1123,6 +1124,77 @@ export async function tradeRoutes(app: App) {
       }));
     },
   );
+
+  // ═════════════════════════ FX rates ═════════════════════════
+  /** Current rate per currency (tenant rows win over platform rows) with source and verification. */
+  app.get('/fx/rates', async (req) => {
+    requirePerm(req, 'cost.read');
+    const tenant = tenantOf(req);
+    return db(req, async (tx) => {
+      const { rates } = await loadFxTable(tx, tenant.id);
+      return { items: rates.sort((a, b) => a.base.localeCompare(b.base)) };
+    });
+  });
+
+  /** Manual FX rate (e.g. bank notice) — used when no FX API is connected. Step-up required. */
+  app.post(
+    '/fx/rates',
+    {
+      schema: {
+        body: z.object({
+          base: z.string().regex(/^[A-Z]{3}$/),
+          rate: z.string().regex(/^\d+(\.\d+)?$/),
+          rateDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          source: z.string().min(2).max(120),
+          verification: z
+            .enum(['UNVERIFIED', 'PARTNER_VERIFIED', 'EXPERT_VERIFIED', 'ACTUAL'])
+            .default('UNVERIFIED'),
+        }),
+      },
+    },
+    async (req, reply) => {
+      const tenant = tenantOf(req);
+      requirePerm(req, 'margin.manage');
+      if (Number(req.body.rate) <= 0) throw badRequest('환율은 0보다 커야 합니다.');
+      return db(req, async (tx) => {
+        const [r] = await tx
+          .insert(fxRates)
+          .values({
+            tenantId: tenant.id,
+            base: req.body.base,
+            quote: 'KRW',
+            rate: req.body.rate,
+            rateDate: req.body.rateDate,
+            source: req.body.source,
+            verification: req.body.verification,
+          })
+          .returning();
+        await audit(tx, req, {
+          action: 'fx.manual',
+          entityType: 'fx_rate',
+          entityId: r!.id,
+          after: req.body,
+        });
+        reply.status(201);
+        return r;
+      });
+    },
+  );
+
+  app.post('/fx/refresh', async (req) => {
+    const tenant = tenantOf(req);
+    requirePerm(req, 'cost.read');
+    return db(req, async (tx) => {
+      await enqueue(
+        tx,
+        tenant.id,
+        'fx.daily',
+        {},
+        { priority: 20, dedupeKey: `fx.manual:${Math.floor(Date.now() / 60000)}` },
+      );
+      return { ok: true };
+    });
+  });
 
   // ═════════════════════════ Freight ═════════════════════════
   const rateBody = z.object({
