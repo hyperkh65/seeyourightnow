@@ -6,7 +6,7 @@ import type { Tx } from '../db/client.js';
 import { bankAccounts, documents, documentTemplates, documentTemplateVersions } from '../db/schema/index.js';
 import { sha256Hex } from '../lib/crypto.js';
 import { badRequest } from '../lib/errors.js';
-import { safeFetch } from '../lib/http.js';
+import { logger } from '../lib/logger.js';
 import { fileBuffer, storeFile } from './files.js';
 import { getPublished } from './settings.js';
 import { render } from './templates/render.js';
@@ -114,11 +114,11 @@ async function renderWithGotenberg(html: string): Promise<Buffer> {
   form.append('files', new Blob([html], { type: 'text/html' }), 'index.html');
   form.append('printBackground', 'true');
   form.append('preferCssPageSize', 'true');
-  const res = await safeFetch(`${config.GOTENBERG_URL}/forms/chromium/convert/html`, {
+  // GOTENBERG_URL is operator configuration (environment), not tenant input, so the SSRF guard does not apply.
+  const res = await fetch(`${config.GOTENBERG_URL}/forms/chromium/convert/html`, {
     method: 'POST',
     body: form,
-    trusted: true,
-    timeoutMs: 60_000,
+    signal: AbortSignal.timeout(60_000),
   });
   if (!res.ok) throw new Error(`Gotenberg HTTP ${res.status}`);
   return Buffer.from(await res.arrayBuffer());
@@ -128,8 +128,11 @@ export async function htmlToPdf(html: string): Promise<{ pdf: Buffer; renderer: 
   if (config.GOTENBERG_URL) {
     try {
       return { pdf: await renderWithGotenberg(html), renderer: 'GOTENBERG' };
-    } catch {
-      /* fall back to local chromium */
+    } catch (e) {
+      logger.warn(
+        { err: e instanceof Error ? e.message : String(e) },
+        'Gotenberg failed; falling back to Chromium',
+      );
     }
   }
   return { pdf: await renderWithChromium(html), renderer: 'CHROMIUM' };

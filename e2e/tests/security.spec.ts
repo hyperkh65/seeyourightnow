@@ -48,5 +48,12 @@ test('open redirect in login `next` is ignored', async ({ page }) => {
   await page.locator('#email').fill('sales@demo.local');
   await page.locator('#password').fill(process.env.E2E_PASSWORD ?? 'Demo-Pass-2026!');
   await page.locator('button[type=submit]').click();
+  // The login endpoint is rate limited per IP; if a previous test exhausted it, wait as instructed and retry.
+  const limited = page.getByText(/요청이 너무 많습니다\. (\d+)초 후/);
+  if (await limited.isVisible({ timeout: 3000 }).catch(() => false)) {
+    const secs = Number(/(\d+)초/.exec((await limited.textContent()) ?? '')?.[1] ?? '60');
+    await page.waitForTimeout((secs + 1) * 1000);
+    await page.locator('button[type=submit]').click();
+  }
   await expect(page).toHaveURL(/demo\.localhost(:\d+)?\/admin/);
 });
