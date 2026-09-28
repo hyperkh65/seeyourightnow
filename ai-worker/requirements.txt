@@ -1,0 +1,6 @@
+# Core runtime (always installed). Licences: MIT / BSD / Apache-2.0.
+fastapi==0.115.14
+uvicorn[standard]==0.32.1
+pillow==11.3.0
+numpy==2.4.6
+pyais==2.20.1

@@ -20,16 +20,28 @@ hb.registerHelper('money', (amount: unknown, currency: unknown) => {
     return String(amount);
   }
 });
-hb.registerHelper('num', (v: unknown) =>
-  typeof v === 'number' || typeof v === 'string' ? String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '',
-);
+const groupDigits = (v: unknown) =>
+  typeof v === 'number' || typeof v === 'string' ? String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '';
+const isoDate = (v: unknown) => (v ? new Date(String(v)).toISOString().slice(0, 10) : '');
+hb.registerHelper('num', groupDigits);
+/**
+ * Legacy aliases used by templates saved before the helpers were renamed. Without
+ * arguments they resolve to the context field of the same name (`{{number}}` = document
+ * number, `{{date}}` = a `date` field), so both old and new templates render correctly.
+ */
+hb.registerHelper('number', function (this: Record<string, unknown>, ...args: unknown[]) {
+  return args.length > 1 ? groupDigits(args[0]) : (this?.number ?? '');
+});
+hb.registerHelper('date', function (this: Record<string, unknown>, ...args: unknown[]) {
+  return args.length > 1 ? isoDate(args[0]) : (this?.date ?? '');
+});
 hb.registerHelper('inc', (v: unknown) => Number(v) + 1);
 hb.registerHelper('eq', (a: unknown, b: unknown) => a === b);
 hb.registerHelper(
   'nl2br',
   (v: unknown) => new hb.SafeString(hb.Utils.escapeExpression(String(v ?? '')).replace(/\n/g, '<br>')),
 );
-hb.registerHelper('fmtDate', (v: unknown) => (v ? new Date(String(v)).toISOString().slice(0, 10) : ''));
+hb.registerHelper('fmtDate', isoDate);
 
 const cache = new Map<string, HandlebarsTemplateDelegate>();
 

@@ -1,0 +1,13 @@
+# Optional model engines (installed with `--build-arg INSTALL_ML=true`).
+# Each engine is detected at runtime; missing engines are reported as unavailable, never faked.
+# Licences: torch (BSD-3), transformers (Apache-2.0), SigLIP weights (Apache-2.0),
+# Florence-2 weights (MIT), PaddleOCR/PaddlePaddle (Apache-2.0), rembg (MIT; u2net weights Apache-2.0).
+torch==2.5.1
+transformers==4.46.3
+sentencepiece==0.2.0
+timm==1.0.12
+einops==0.8.0
+paddlepaddle==2.6.2
+paddleocr==2.9.1
+rembg==2.0.60
+onnxruntime==1.20.1

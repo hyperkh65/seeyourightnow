@@ -20,3 +20,10 @@ __pycache__/
 next-env.d.ts
 *.tsbuildinfo
 storage-test/
+*.tmp.mjs
+e2e/test-results/
+e2e/playwright-report/
+ai-worker/.venv/
+**/__pycache__/
+.pytest_cache/
+.ruff_cache/

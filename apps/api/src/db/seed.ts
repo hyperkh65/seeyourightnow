@@ -1,5 +1,6 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import type { Role } from '@sos/core';
+import { closeCache } from '../lib/cache.js';
 import { closeDb, systemDb } from './client.js';
 import {
   hsCodes,
@@ -109,7 +110,7 @@ async function ensureSuperAdmin(): Promise<void> {
       tenantId: null,
       email,
       name: 'Platform Admin',
-      passwordHash: await hashPassword(PASSWORD),
+      passwordHash: await hashPassword(process.env.SEED_SUPERADMIN_PASSWORD ?? PASSWORD),
       isSuperAdmin: true,
     })
     .returning({ id: users.id });
@@ -191,19 +192,45 @@ export async function seedAll(opts: { demo?: boolean } = {}): Promise<{ demoId: 
   return ids;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  seedAll()
-    .then(() => {
-      console.warn(`Seed complete.
+/**
+ * SEED_MODE:
+ *  - "demo" (default outside production): reference data, super admin, demo + test tenants.
+ *  - "base": reference data and the platform super admin only (production bootstrap).
+ */
+async function main(): Promise<void> {
+  const prod = process.env.NODE_ENV === 'production';
+  const mode = process.env.SEED_MODE ?? (prod ? 'base' : 'demo');
+  if (mode === 'base') {
+    if (prod && !process.env.SEED_SUPERADMIN_PASSWORD) {
+      throw new Error('SEED_SUPERADMIN_PASSWORD is required for the production bootstrap.');
+    }
+    await seedReference();
+    await ensureSuperAdmin();
+    console.warn('Base seed complete (reference data + platform admin). MFA is enforced on first login.');
+    return;
+  }
+  if (prod && process.env.ALLOW_DEMO_SEED !== 'true') {
+    throw new Error('Refusing to seed demo tenants in production (set ALLOW_DEMO_SEED=true to override).');
+  }
+  await seedAll();
+  console.warn(`Seed complete.
   Platform admin : http://platform.localhost:3000  superadmin@platform.local
   Demo tenant    : http://demo.localhost:3000      owner@demo.local (admin) · buyer@demo.local (customer)
   Second tenant  : http://acme.localhost:3000      owner@acme.local
   Password       : ${process.env.SEED_PASSWORD ? '(SEED_PASSWORD)' : PASSWORD}`);
-      return closeDb();
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main()
+    .then(async () => {
+      await closeDb();
+      await closeCache();
+      process.exit(0);
     })
     .catch(async (e) => {
       console.error(e);
       await closeDb();
+      await closeCache();
       process.exit(1);
     });
 }

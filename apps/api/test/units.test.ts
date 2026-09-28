@@ -126,6 +126,13 @@ describe('service units', () => {
     expect(render('{{money v "KRW"}}', { v: '1234567.5' })).toBe('₩1,234,568');
   });
 
+  it('templates saved before the helper rename still render (number/date aliases)', () => {
+    const data = { number: 'QT-2026-0001', items: [{ quantity: 1500 }], date: '2026-01-02' };
+    expect(render('{{number}}|{{#each items}}{{number quantity}}{{/each}}|{{num 1500}}|{{date}}', data)).toBe(
+      'QT-2026-0001|1,500|1,500|2026-01-02',
+    );
+  });
+
   it('audit scrub removes secrets', () => {
     expect(scrub({ apiKey: 'abc', nested: { password: 'p', ok: 1 } })).toEqual({
       apiKey: '[REDACTED]',
