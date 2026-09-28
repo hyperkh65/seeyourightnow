@@ -65,6 +65,13 @@ export function evaluateRegulation(rule: RegulationRule, attrs: ProductAttribute
     }
   }
 
+  // Rules without attribute triggers are purely HS-driven (e.g. fire equipment).
+  if (rule.triggerAll.length === 0 && rule.triggerAny.length === 0) {
+    const hsOnly = hsMatches(rule.hsPrefixes, hsCode);
+    if (hsOnly === true) return base(rule, 'RULE_MATCHED', 0.8, [`HS ${hsCode} 해당 범위`], []);
+    return base(rule, 'NOT_APPLICABLE', hsOnly === null ? 0.3 : 0.7, [hsOnly === null ? 'HS 코드 확정 후 다시 판단합니다.' : 'HS 코드 범위 밖'], []);
+  }
+
   let allTrue = true;
   let anyFalse = false;
   for (const k of rule.triggerAll) {
