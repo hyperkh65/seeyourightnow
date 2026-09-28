@@ -20,7 +20,7 @@ docker compose up -d --build
 | http://demo.localhost:3000/admin | 테넌트 관리자 |
 | http://acme.localhost:3000 | 두 번째 테넌트 (격리 테스트용) |
 | http://platform.localhost:3000 | 플랫폼(슈퍼 관리자) 콘솔 |
-| http://localhost:4000/api/docs | OpenAPI (Swagger UI) |
+| `docs/openapi.json` | OpenAPI 3 명세 (개발 모드에서는 http://localhost:4000/api/docs Swagger UI) |
 
 `*.localhost`는 브라우저에서 자동으로 127.0.0.1로 연결됩니다. 비밀키(서명 키·암호화 마스터 키·AI 워커 토큰)는 첫 실행 때 `secrets` 볼륨에 생성되고 `*_FILE` 변수로만 전달됩니다.
 
