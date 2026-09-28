@@ -25,6 +25,18 @@ export async function buildApp(): Promise<App> {
     disableRequestLogging: config.NODE_ENV === 'test',
   }).withTypeProvider<ZodTypeProvider>();
 
+  // Accept empty JSON bodies (e.g. POST actions without payload) as {}.
+  app.removeContentTypeParser('application/json');
+  app.addContentTypeParser('application/json', { parseAs: 'string' }, (_req, body, done) => {
+    const text = typeof body === 'string' ? body : body.toString('utf8');
+    if (!text.trim()) return done(null, {});
+    try {
+      done(null, JSON.parse(text));
+    } catch {
+      done(new AppError(400, 'INVALID_JSON', 'JSON 형식이 올바르지 않습니다.'), undefined);
+    }
+  });
+
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
@@ -40,6 +52,8 @@ export async function buildApp(): Promise<App> {
     timeWindow: '1 minute',
     redis: getRedis() ?? undefined,
     keyGenerator: (req) => req.ip,
+    // Automated tests share one IP; they opt in to rate limiting explicitly via header.
+    allowList: config.NODE_ENV === 'test' ? (req) => !req.headers['x-test-ratelimit'] : undefined,
     errorResponseBuilder: (_req, ctx) => ({ statusCode: 429, error: 'RATE_LIMITED', code: 'RATE_LIMITED', message: `요청이 너무 많습니다. ${Math.ceil(ctx.ttl / 1000)}초 후 다시 시도해 주세요.` }),
   });
   await app.register(multipart, { limits: { fileSize: config.UPLOAD_MAX_MB * 1024 * 1024, files: 10, fields: 40 } });

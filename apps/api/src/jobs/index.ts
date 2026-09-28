@@ -1,3 +1,12 @@
+/**
+ * Importing these modules registers their job handlers with the queue.
+ * Both the API process (for in-process workers / tests) and the worker process call this.
+ */
+import '../services/notify.js';
+import '../services/sourcing/pipeline.js';
+import '../services/tracking.js';
+import './maintenance.js';
+
 export function registerAllJobs(): void {
-  // Job handlers are registered by their modules (see imports below).
+  /* handlers are registered on import */
 }

@@ -84,7 +84,7 @@ export const QUOTATION_HTML = `${HEADER}
         {{#each visibleBreakdown}}<div class="small muted">· {{label}} {{money amount ../../currency}}</div>{{/each}}
         {{#if badgeLabel}}<span class="badge {{#if badgeWarn}}warn{{/if}}">{{badgeLabel}}</span>{{/if}}
       </td>
-      <td class="num">{{number quantity}} {{unit}}</td>
+      <td class="num">{{num quantity}} {{unit}}</td>
       <td class="num">{{money unitPrice ../currency}}</td>
       <td class="num">{{money amount ../currency}}</td>
     </tr>
@@ -112,7 +112,7 @@ export const CONTRACT_HTML = `${HEADER}
 </div>
 <h2>계약 품목</h2>
 <table><thead><tr><th>제품</th><th>사양</th><th class="num">수량</th><th class="num">단가</th><th class="num">금액</th></tr></thead><tbody>
-{{#each items}}<tr><td>{{name}}</td><td class="small">{{specification}}</td><td class="num">{{number quantity}}</td><td class="num">{{money unitPrice ../currency}}</td><td class="num">{{money amount ../currency}}</td></tr>{{/each}}
+{{#each items}}<tr><td>{{name}}</td><td class="small">{{specification}}</td><td class="num">{{num quantity}}</td><td class="num">{{money unitPrice ../currency}}</td><td class="num">{{money amount ../currency}}</td></tr>{{/each}}
 </tbody></table>
 <table class="totals"><tr class="grand"><td>계약 금액 (VAT 포함)</td><td class="num">{{money total currency}}</td></tr></table>
 <h2>계약 조항</h2>
@@ -129,7 +129,7 @@ export const INVOICE_HTML = `${HEADER}
   <div class="box"><h3>정보</h3><div>프로젝트: {{projectCode}}</div>{{#if contractNumber}}<div>계약: {{contractNumber}}</div>{{/if}}{{#if dueDate}}<div>결제기한: {{dueDate}}</div>{{/if}}{{#if incoterm}}<div>Incoterm: {{incoterm}}</div>{{/if}}</div>
 </div>
 <table><thead><tr><th>Description</th><th class="num">Qty</th>{{#unless packingOnly}}<th class="num">Unit price</th><th class="num">Amount</th>{{/unless}}{{#if packing}}<th class="num">Cartons</th><th class="num">G.W.(kg)</th><th class="num">CBM</th>{{/if}}</tr></thead><tbody>
-{{#each lines}}<tr><td><strong>{{name}}</strong>{{#if spec}}<div class="small muted">{{spec}}</div>{{/if}}</td><td class="num">{{number quantity}} {{unit}}</td>{{#unless ../packingOnly}}<td class="num">{{money unitPrice ../currency}}</td><td class="num">{{money amount ../currency}}</td>{{/unless}}{{#if ../packing}}<td class="num">{{cartons}}</td><td class="num">{{grossWeightKg}}</td><td class="num">{{cbm}}</td>{{/if}}</tr>{{/each}}
+{{#each lines}}<tr><td><strong>{{name}}</strong>{{#if spec}}<div class="small muted">{{spec}}</div>{{/if}}</td><td class="num">{{num quantity}} {{unit}}</td>{{#unless ../packingOnly}}<td class="num">{{money unitPrice ../currency}}</td><td class="num">{{money amount ../currency}}</td>{{/unless}}{{#if ../packing}}<td class="num">{{cartons}}</td><td class="num">{{grossWeightKg}}</td><td class="num">{{cbm}}</td>{{/if}}</tr>{{/each}}
 </tbody></table>
 {{#unless packingOnly}}
 <table class="totals">

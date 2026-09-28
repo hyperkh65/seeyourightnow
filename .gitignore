@@ -19,3 +19,4 @@ __pycache__/
 .ruff_cache/
 next-env.d.ts
 *.tsbuildinfo
+storage-test/
