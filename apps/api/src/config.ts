@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { z } from 'zod';
 
 const bool = z
@@ -87,8 +88,28 @@ export type Config = z.infer<typeof envSchema> & {
   masterKey: Buffer | null;
 };
 
+/**
+ * Docker/Kubernetes secrets convention: `FOO_FILE=/run/secrets/foo` loads FOO from a file,
+ * so secrets never have to be placed in plain environment variables or compose files.
+ */
+function resolveFileSecrets(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const out = { ...env };
+  for (const [k, v] of Object.entries(env)) {
+    if (!k.endsWith('_FILE') || !v) continue;
+    const name = k.slice(0, -5);
+    // Only variables this service actually reads (ignore unrelated *_FILE variables).
+    if (!(name in envSchema.shape) || out[name]) continue;
+    try {
+      out[name] = readFileSync(v, 'utf8').trim();
+    } catch (e) {
+      throw new Error(`Cannot read ${k} (${v}): ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+  return out;
+}
+
 function load(): Config {
-  const parsed = envSchema.safeParse(process.env);
+  const parsed = envSchema.safeParse(resolveFileSecrets(process.env));
   if (!parsed.success) {
     console.error('Invalid environment configuration', parsed.error.flatten().fieldErrors);
     throw new Error('Invalid environment configuration');

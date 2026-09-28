@@ -12,6 +12,15 @@ const hex = z.string().regex(/^#([0-9a-fA-F]{6})$/, '#RRGGBB 형식이어야 합
 const url = z.string().url().or(z.literal(''));
 const optionalText = z.string().max(2000).default('');
 
+/** Links editable by tenant admins: relative paths, http(s), mailto and tel only (no javascript:/data:). */
+export function isSafeHref(v: string): boolean {
+  const t = v.trim();
+  if (t === '') return true;
+  if (/^\/(?![\\/])/.test(t) || t.startsWith('#')) return true;
+  return /^(https?:\/\/|mailto:|tel:)/i.test(t);
+}
+const safeHref = (max: number) => z.string().max(max).refine(isSafeHref, '허용되지 않는 링크 형식입니다');
+
 export const brandSchema = z.object({
   siteName: z.string().min(1).max(80).default('Sourcing'),
   serviceName: z.string().max(80).default('AI Sourcing'),
@@ -53,7 +62,7 @@ export const socialLinkSchema = z.object({
   id: z.string().min(1),
   type: z.string().min(1).max(40), // KAKAO_CHANNEL, KAKAO_OPENCHAT, WECHAT, WHATSAPP, INSTAGRAM, YOUTUBE, FACEBOOK, X, THREADS, NAVER_BLOG, CUSTOM
   label: z.string().max(60).default(''),
-  url: z.string().max(500).default(''),
+  url: safeHref(500).default(''),
   value: z.string().max(200).default(''), // e.g. WeChat ID
   enabled: z.boolean().default(true),
   showInFooter: z.boolean().default(true),
@@ -66,7 +75,7 @@ export const footerSchema = z.object({
   copyright: optionalText,
   showCompanyInfo: z.boolean().default(true),
   customText: optionalText,
-  policyLinks: z.array(z.object({ label: z.string(), href: z.string() })).default([]),
+  policyLinks: z.array(z.object({ label: z.string().max(60), href: safeHref(500) })).default([]),
 });
 export type FooterSettings = z.infer<typeof footerSchema>;
 
@@ -94,12 +103,12 @@ export const homepageSectionSchema = z.object({
   subtitle: z.string().max(600).default(''),
   body: z.string().max(5000).default(''),
   imageFileId: z.string().nullable().default(null),
-  videoUrl: z.string().max(500).default(''),
+  videoUrl: safeHref(500).default(''),
   buttons: z
     .array(
       z.object({
         label: z.string().max(40),
-        href: z.string().max(500),
+        href: safeHref(500),
         variant: z.enum(['primary', 'secondary', 'ghost']).default('primary'),
       }),
     )

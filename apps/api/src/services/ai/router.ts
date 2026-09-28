@@ -1,3 +1,4 @@
+import { gte, sql } from 'drizzle-orm';
 import { withTenant, type Tx } from '../../db/client.js';
 import { aiUsage } from '../../db/schema/index.js';
 import { safeFetch } from '../../lib/http.js';
@@ -177,6 +178,20 @@ async function resolveChain(tx: Tx, tenantId: string, vision: boolean): Promise<
  * Runs a chat completion with automatic fallback.
  * Throws AiUnavailableError when no provider is configured — callers must degrade gracefully.
  */
+/** Monthly token budget from the `ai` settings section (0 = unlimited). */
+async function monthlyBudgetExceeded(tx: Tx, tenantId: string): Promise<boolean> {
+  const ai = await getPublished(tx, tenantId, 'ai');
+  if (!ai.monthlyTokenBudget) return false;
+  const start = new Date();
+  start.setUTCDate(1);
+  start.setUTCHours(0, 0, 0, 0);
+  const [row] = await tx
+    .select({ used: sql<number>`coalesce(sum(${aiUsage.inputTokens} + ${aiUsage.outputTokens}), 0)::bigint` })
+    .from(aiUsage)
+    .where(gte(aiUsage.createdAt, start));
+  return Number(row?.used ?? 0) >= ai.monthlyTokenBudget;
+}
+
 export async function aiChat(
   tenantId: string,
   task: AiTask,
@@ -184,7 +199,14 @@ export async function aiChat(
   opts: { vision?: boolean; json?: boolean; maxTokens?: number } = {},
 ): Promise<AiResult> {
   const vision = !!opts.vision;
-  const chain = await withTenant({ tenantId }, (tx) => resolveChain(tx, tenantId, vision));
+  const { chain, overBudget } = await withTenant({ tenantId }, async (tx) => ({
+    chain: await resolveChain(tx, tenantId, vision),
+    overBudget: await monthlyBudgetExceeded(tx, tenantId),
+  }));
+  if (overBudget)
+    throw new AiUnavailableError(
+      '이번 달 AI 사용 예산을 모두 사용했습니다. 설정 → AI 라우팅에서 예산을 조정하세요.',
+    );
   if (chain.length === 0)
     throw new AiUnavailableError(
       vision ? '비전 AI 제공자가 설정되지 않았습니다.' : '텍스트 AI 제공자가 설정되지 않았습니다.',

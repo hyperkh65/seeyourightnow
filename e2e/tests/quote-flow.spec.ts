@@ -10,7 +10,8 @@ test('customer ↔ staff quotation approval flow', async ({ browser }) => {
   test.setTimeout(240_000);
   const buyer = await newSession(browser, 'demo', 'buyer@demo.local');
   await buyer.page.goto(`${host('demo')}/search`);
-  const product = `E2E 실리콘 주방 집게 ${Date.now().toString().slice(-6)}`;
+  // A product carried by the demo private supply network, so candidates exist even without mock data (DEV_MODE=false).
+  const product = '휴대용 미니 선풍기 USB 충전식';
   await buyer.page.getByRole('textbox', { name: '제품명, 설명 또는 상품 링크' }).fill(product);
   await buyer.page.getByRole('button', { name: '조건 추가' }).click();
   await buyer.page.getByPlaceholder('예: 500').fill('500');

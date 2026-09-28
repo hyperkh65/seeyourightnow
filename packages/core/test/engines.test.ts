@@ -627,3 +627,25 @@ describe('misc', () => {
     expect(insideGeofence({ lat: 35.08, lon: 129.05 }, busan, 15)).toBe(true);
   });
 });
+
+describe('settings link safety', () => {
+  it('accepts relative, http(s), mailto and tel links only', async () => {
+    const { isSafeHref, homepageSectionSchema } = await import('../src/settings.js');
+    for (const ok of ['/search', 'https://example.com', 'mailto:a@b.co', 'tel:+82-2-000', '#faq', ''])
+      expect(isSafeHref(ok)).toBe(true);
+    for (const bad of [
+      'javascript:alert(1)',
+      ' JavaScript:alert(1)',
+      'data:text/html,x',
+      '//evil.com',
+      'vbscript:x',
+    ])
+      expect(isSafeHref(bad)).toBe(false);
+    const r = homepageSectionSchema.safeParse({
+      id: 'x',
+      type: 'HERO',
+      buttons: [{ label: 'x', href: 'javascript:alert(1)' }],
+    });
+    expect(r.success).toBe(false);
+  });
+});

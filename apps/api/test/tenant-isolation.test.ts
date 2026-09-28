@@ -118,3 +118,16 @@ describe('tenant isolation', () => {
     expect(r.rows.length).toBeGreaterThan(60);
   });
 });
+
+describe('on-demand TLS allow-list', () => {
+  it('only issues certificates for the platform host, active tenants and verified domains', async () => {
+    const c = await client('demo.localhost');
+    const check = async (d: string) =>
+      (await c.get(`/internal/tls-allowed?domain=${encodeURIComponent(d)}`)).statusCode;
+    expect(await check('platform.localhost')).toBe(200);
+    expect(await check('demo.localhost')).toBe(200);
+    expect(await check('no-such-tenant.localhost')).toBe(404);
+    expect(await check('evil.example.com')).toBe(404);
+    expect(await check('bad domain')).toBe(400);
+  });
+});

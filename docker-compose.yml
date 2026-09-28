@@ -1,0 +1,183 @@
+# Sourcing OS — full stack. One command:  docker compose up -d --build
+#   Web      http://demo.localhost:3000  (tenant)   http://platform.localhost:3000 (platform console)
+#   API docs http://localhost:4000/api/docs
+# Secrets are generated once into the `secrets` volume (see infra/scripts/init-secrets.mjs).
+# Local demo defaults below are NOT production settings — see docs/DEPLOYMENT.md.
+name: sourcing-os
+
+x-node-build: &node-build
+  context: .
+  args:
+    NODE_IMAGE: ${NODE_IMAGE:-node:22-bookworm-slim}
+  secrets: [extra_ca]
+
+x-api-env: &api-env
+  NODE_ENV: production
+  DEV_MODE: "false"
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  DATABASE_URL: postgres://sos_app:${SOS_APP_PASSWORD:-sos_app}@postgres:5432/sourcing_os
+  DATABASE_SYSTEM_URL: postgres://sos_system:${SOS_SYSTEM_PASSWORD:-sos_system}@postgres:5432/sourcing_os
+  DATABASE_OWNER_URL: postgres://sos_owner:${SOS_OWNER_PASSWORD:-sos_owner}@postgres:5432/sourcing_os
+  REDIS_URL: redis://valkey:6379
+  PLATFORM_BASE_DOMAIN: ${PLATFORM_BASE_DOMAIN:-localhost}
+  PLATFORM_ADMIN_HOST: ${PLATFORM_ADMIN_HOST:-platform.localhost}
+  DEFAULT_TENANT_SLUG: ${DEFAULT_TENANT_SLUG:-demo}
+  PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-http://localhost:3000}
+  TRUST_PROXY: "true"
+  COOKIE_SECURE: ${COOKIE_SECURE:-false}
+  APP_SIGNING_KEY_FILE: /secrets/app_signing_key
+  SECRETS_MASTER_KEY_FILE: /secrets/secrets_master_key
+  SECRETS_BACKEND: ${SECRETS_BACKEND:-BUILTIN}
+  STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+  STORAGE_LOCAL_DIR: /app/storage
+  GOTENBERG_URL: http://gotenberg:3000
+  AI_WORKER_URL: http://ai-worker:8000
+  CLAMAV_HOST: ${CLAMAV_HOST:-}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  EMAIL_FROM_DEFAULT: ${EMAIL_FROM_DEFAULT:-no-reply@localhost}
+  RUN_WORKER_IN_PROCESS: "false"
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: sourcing_os
+      SOS_OWNER_PASSWORD: ${SOS_OWNER_PASSWORD:-sos_owner}
+      SOS_APP_PASSWORD: ${SOS_APP_PASSWORD:-sos_app}
+      SOS_SYSTEM_PASSWORD: ${SOS_SYSTEM_PASSWORD:-sos_system}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sourcing_os"]
+      interval: 5s
+      retries: 30
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    command: ["valkey-server", "--appendonly", "yes"]
+    volumes: [valkeydata:/data]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      retries: 20
+
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    restart: unless-stopped
+    command: ["gotenberg", "--chromium-disable-javascript=true", "--api-timeout=60s", "--log-level=warn"]
+
+  secrets-init:
+    build: { <<: *node-build, dockerfile: apps/api/Dockerfile }
+    image: sourcing-os-api:local
+    user: "0"
+    entrypoint: ["node", "/app/infra/init-secrets.mjs"]
+    volumes:
+      - secrets:/secrets
+      - ./infra/scripts/init-secrets.mjs:/app/infra/init-secrets.mjs:ro
+    restart: "no"
+
+  api:
+    image: sourcing-os-api:local
+    build: { <<: *node-build, dockerfile: apps/api/Dockerfile }
+    init: true
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      valkey: { condition: service_healthy }
+      secrets-init: { condition: service_completed_successfully }
+    environment:
+      <<: *api-env
+      MIGRATE_ON_START: "true"
+      SEED_ON_START: "true"
+      SEED_MODE: ${SEED_MODE:-demo}
+      ALLOW_DEMO_SEED: ${ALLOW_DEMO_SEED:-true}
+      SEED_PASSWORD: ${SEED_PASSWORD:-Demo-Pass-2026!}
+      SEED_SUPERADMIN_PASSWORD: ${SEED_SUPERADMIN_PASSWORD:-}
+    volumes:
+      - storage:/app/storage
+      - secrets:/secrets:ro
+    ports: ["127.0.0.1:${API_PORT:-4000}:4000"]
+
+  worker:
+    image: sourcing-os-api:local
+    init: true
+    restart: unless-stopped
+    command: ["node", "dist/worker.js"]
+    healthcheck:
+      disable: true # no HTTP port; liveness is visible in Admin → 시스템 상태 (queue lag)
+    depends_on:
+      api: { condition: service_healthy }
+    environment:
+      <<: *api-env
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-4}
+    volumes:
+      - storage:/app/storage
+      - secrets:/secrets:ro
+
+  web:
+    image: sourcing-os-web:local
+    build: { <<: *node-build, dockerfile: apps/web/Dockerfile }
+    init: true
+    restart: unless-stopped
+    depends_on:
+      api: { condition: service_healthy }
+    environment:
+      API_INTERNAL_URL: http://api:4000
+    ports: ["${WEB_PORT:-3000}:3000"]
+
+  ai-worker:
+    image: sourcing-os-ai-worker:local
+    build:
+      context: ./ai-worker
+      args:
+        PYTHON_IMAGE: ${PYTHON_IMAGE:-python:3.11-slim}
+        INSTALL_ML: ${AI_INSTALL_ML:-false}
+      secrets: [extra_ca]
+    restart: unless-stopped
+    depends_on:
+      secrets-init: { condition: service_completed_successfully }
+    environment:
+      WORKER_TOKEN_FILE: /secrets/worker_token
+      ENABLE_CAPTION: ${AI_ENABLE_CAPTION:-false}
+    volumes:
+      - secrets:/secrets:ro
+      - models:/models
+
+  # Optional: malware scanning of uploads (docker compose --profile security up -d)
+  clamav:
+    image: clamav/clamav:stable
+    profiles: ["security"]
+    restart: unless-stopped
+
+  # Optional: HTTPS edge with on-demand certificates for tenant/custom domains
+  # (docker compose --profile edge up -d). Requires public DNS; see docs/DEPLOYMENT.md.
+  caddy:
+    image: caddy:2
+    profiles: ["edge"]
+    restart: unless-stopped
+    depends_on: [web, api]
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:-admin@example.com}
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+
+# Build-time only: optional CA bundle for TLS-inspecting proxies (EXTRA_CA_FILE=/path/ca.crt).
+secrets:
+  extra_ca:
+    file: ${EXTRA_CA_FILE:-./infra/empty-ca.pem}
+
+volumes:
+  pgdata:
+  valkeydata:
+  storage:
+  secrets:
+  models:
+  caddydata:

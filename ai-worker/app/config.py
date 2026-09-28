@@ -26,9 +26,19 @@ class Settings:
     device: str
 
 
+def _secret(name: str) -> str | None:
+    """Reads NAME or, following the Docker secrets convention, the file in NAME_FILE."""
+    value = os.getenv(name)
+    path = os.getenv(f"{name}_FILE")
+    if not value and path:
+        with open(path, encoding="utf-8") as f:
+            value = f.read().strip()
+    return value or None
+
+
 def load() -> Settings:
     return Settings(
-        token=os.getenv("WORKER_TOKEN") or None,
+        token=_secret("WORKER_TOKEN"),
         dev_mode=_bool("DEV_MODE", False),
         max_image_bytes=int(os.getenv("MAX_IMAGE_BYTES", str(10 * 1024 * 1024))),
         max_pixels=int(os.getenv("MAX_IMAGE_PIXELS", str(40_000_000))),

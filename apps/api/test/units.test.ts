@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import sharp from 'sharp';
 import { phashSimilarity } from '@sos/core';
-import { isPrivateAddress } from '../src/lib/http.js';
+import { isPrivateAddress, safeFetch } from '../src/lib/http.js';
 import { csvCell, parseCsv } from '../src/modules/importexport.js';
 import { aopSignature, coupangAuthorization } from '../src/services/connections/registry.js';
 import { map1688Product, parse1688OfferId } from '../src/services/connectors/product-sources.js';
@@ -22,6 +22,37 @@ describe('service units', () => {
     expect(isPrivateAddress('::1')).toBe(true);
     expect(isPrivateAddress('8.8.8.8')).toBe(false);
     expect(isPrivateAddress('::ffff:127.0.0.1')).toBe(true);
+  });
+
+  it('SSRF: tenant-configured (trusted) connectors reach only operator allow-listed internal hosts', async () => {
+    const { createServer } = await import('node:http');
+    const srv = createServer((req, res) => {
+      if (req.url === '/redirect') {
+        res.writeHead(302, { location: 'http://169.254.169.254/latest/meta-data/' });
+        return res.end();
+      }
+      res.end('ok');
+    });
+    await new Promise<void>((r) => srv.listen(0, '127.0.0.1', () => r()));
+    const port = (srv.address() as { port: number }).port;
+    try {
+      // untrusted (user supplied) URLs never reach internal addresses
+      await expect(safeFetch(`http://127.0.0.1:${port}/`)).rejects.toThrow();
+      await expect(safeFetch(`http://localhost:${port}/`)).rejects.toThrow();
+      // trusted + allow-listed host (dev default includes localhost) works
+      expect(await (await safeFetch(`http://localhost:${port}/`, { trusted: true })).text()).toBe('ok');
+      // trusted but not allow-listed private targets are refused, including cloud metadata
+      await expect(safeFetch('http://10.0.0.5:8080/', { trusted: true, timeoutMs: 2000 })).rejects.toThrow();
+      await expect(
+        safeFetch('http://169.254.169.254/latest/meta-data/', { trusted: true, timeoutMs: 2000 }),
+      ).rejects.toThrow();
+      // redirects are re-validated on every hop
+      await expect(safeFetch(`http://localhost:${port}/redirect`, { trusted: true })).rejects.toThrow(
+        /내부 네트워크|blocked/,
+      );
+    } finally {
+      srv.close();
+    }
   });
 
   it('CSV parsing and formula-injection-safe export', () => {

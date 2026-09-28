@@ -6,7 +6,9 @@ ARG INSTALL_ML=false
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 HF_HOME=/models
 WORKDIR /srv
 COPY requirements.txt requirements-ml.txt ./
-RUN pip install -r requirements.txt \
+RUN --mount=type=secret,id=extra_ca,required=false \
+    if [ -s /run/secrets/extra_ca ]; then export PIP_CERT=/run/secrets/extra_ca; fi \
+ && pip install -r requirements.txt \
  && if [ "$INSTALL_ML" = "true" ]; then \
       apt-get update && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 libgomp1 && rm -rf /var/lib/apt/lists/* \
       && pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements-ml.txt; \

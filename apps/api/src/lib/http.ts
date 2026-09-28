@@ -1,5 +1,7 @@
+import dns from 'node:dns';
 import { lookup } from 'node:dns/promises';
 import net from 'node:net';
+import { Agent } from 'undici';
 import { AppError } from './errors.js';
 
 /**
@@ -64,21 +66,89 @@ export interface SafeFetchOptions extends RequestInit {
   trusted?: boolean;
 }
 
-export async function safeFetch(raw: string, opts: SafeFetchOptions = {}): Promise<Response> {
-  if (!opts.trusted) await assertPublicUrl(raw);
+/**
+ * Internal hosts that operator-configured connectors may reach (e.g. the self-hosted AI worker).
+ * Tenant admins cannot widen this list: it comes from the environment only.
+ */
+const INTERNAL_ALLOW = new Set(
+  (
+    process.env.INTERNAL_HOST_ALLOWLIST ??
+    (process.env.NODE_ENV === 'production' ? 'ai-worker' : 'ai-worker,localhost,127.0.0.1')
+  )
+    .split(',')
+    .map((h) => h.trim().toLowerCase())
+    .filter(Boolean),
+);
+const METADATA_V4 = ['169.254.169.254', '169.254.170.2', '100.100.100.200'];
+
+type LookupCb = (
+  err: NodeJS.ErrnoException | null,
+  address: string | dns.LookupAddress[],
+  family?: number,
+) => void;
+
+/** Resolves at connect time and refuses private targets, so DNS rebinding cannot bypass the pre-check. */
+function guardedLookup(allowInternal: boolean) {
+  return (hostname: string, options: dns.LookupOptions, cb: LookupCb) => {
+    dns.lookup(hostname, { ...options, all: true }, (err, addresses) => {
+      if (err) return cb(err, [] as dns.LookupAddress[]);
+      const list = addresses as dns.LookupAddress[];
+      const internalOk = allowInternal && INTERNAL_ALLOW.has(hostname.toLowerCase());
+      const blocked = list.some(
+        (a) => METADATA_V4.includes(a.address) || (!internalOk && isPrivateAddress(a.address)),
+      );
+      if (blocked) {
+        const e = new Error(`blocked address for ${hostname}`) as NodeJS.ErrnoException;
+        e.code = 'EBLOCKED';
+        return cb(e, [] as dns.LookupAddress[]);
+      }
+      if (options.all) return cb(null, list);
+      const first = list[0]!;
+      return cb(null, first.address, first.family);
+    });
+  };
+}
+const publicAgent = new Agent({ connect: { lookup: guardedLookup(false) } });
+const operatorAgent = new Agent({ connect: { lookup: guardedLookup(true) } });
+
+/** Pre-validates a URL; operator-trusted calls may reach allow-listed internal hosts only. */
+async function assertAllowedUrl(raw: string, trusted: boolean): Promise<void> {
+  if (!trusted) {
+    await assertPublicUrl(raw);
+    return;
+  }
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new AppError(400, 'INVALID_URL', '올바른 URL이 아닙니다.');
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:')
+    throw new AppError(400, 'INVALID_URL', 'http(s) URL만 허용됩니다.');
+  if (INTERNAL_ALLOW.has(url.hostname.toLowerCase())) return;
+  await assertPublicUrl(raw);
+}
+
+export async function safeFetch(raw: string, opts: SafeFetchOptions = {}, depth = 0): Promise<Response> {
+  const trusted = !!opts.trusted;
+  await assertAllowedUrl(raw, trusted);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? 15_000);
   try {
+    const { trusted: _t, timeoutMs: _tm, maxBytes: _mb, ...init } = opts;
     const res = await fetch(raw, {
-      ...opts,
-      redirect: opts.trusted ? 'follow' : 'manual',
+      ...init,
+      redirect: 'manual',
       signal: controller.signal,
+      // undici dispatcher: connect-time address check (not part of the DOM RequestInit type)
+      ...({ dispatcher: trusted ? operatorAgent : publicAgent } as object),
     });
-    if (!opts.trusted && res.status >= 300 && res.status < 400) {
+    if (res.status >= 300 && res.status < 400) {
       const loc = res.headers.get('location');
       if (!loc) return res;
-      const next = new URL(loc, raw).toString();
-      return safeFetch(next, { ...opts, timeoutMs: opts.timeoutMs });
+      if (depth >= 5) throw new AppError(502, 'TOO_MANY_REDIRECTS', '리다이렉트가 너무 많습니다.');
+      // Every hop is re-validated (a public URL must not redirect into the internal network).
+      return safeFetch(new URL(loc, raw).toString(), opts, depth + 1);
     }
     return res;
   } finally {

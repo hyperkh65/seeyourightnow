@@ -88,4 +88,32 @@ export async function healthRoutes(app: App) {
       components: Object.fromEntries(Object.entries(h.components).map(([k, v]) => [k, v.status])),
     };
   });
+
+  /**
+   * Caddy on-demand TLS "ask" endpoint: a certificate is issued only for the platform host,
+   * active tenant subdomains, and custom domains whose DNS ownership was verified and enabled.
+   */
+  app.get('/internal/tls-allowed', async (req, reply) => {
+    const domain = String((req.query as { domain?: string }).domain ?? '')
+      .toLowerCase()
+      .replace(/\.$/, '');
+    if (!/^(?=.{3,253}$)([a-z0-9-]+\.)+[a-z0-9-]{2,}$/.test(domain)) return reply.status(400).send();
+    let ok = domain === config.PLATFORM_ADMIN_HOST;
+    const base = `.${config.PLATFORM_BASE_DOMAIN}`;
+    if (!ok && domain.endsWith(base)) {
+      const slug = domain.slice(0, -base.length);
+      const r = await systemDb.execute(
+        sql`select 1 from tenants where slug = ${slug} and status = 'ACTIVE' limit 1`,
+      );
+      ok = r.rows.length > 0;
+    }
+    if (!ok) {
+      const r = await systemDb.execute(
+        sql`select 1 from tenant_domains d join tenants t on t.id = d.tenant_id
+            where d.hostname = ${domain} and d.dns_status = 'VERIFIED' and d.active and t.status = 'ACTIVE' limit 1`,
+      );
+      ok = r.rows.length > 0;
+    }
+    return reply.status(ok ? 200 : 404).send();
+  });
 }

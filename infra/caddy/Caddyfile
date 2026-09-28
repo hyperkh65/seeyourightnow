@@ -1,0 +1,27 @@
+# Edge proxy with automatic HTTPS.
+# - *.{$PLATFORM_BASE_DOMAIN} tenant subdomains and verified custom domains get certificates on demand.
+# - The API decides which hostnames may receive a certificate (/api/v1/internal/tls-allowed).
+{
+	email {$ACME_EMAIL}
+	on_demand_tls {
+		ask http://api:4000/api/v1/internal/tls-allowed
+	}
+}
+
+https:// {
+	tls {
+		on_demand
+	}
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	@api path /api/*
+	reverse_proxy @api api:4000 {
+		header_up X-Forwarded-Host {host}
+	}
+	reverse_proxy web:3000 {
+		header_up X-Forwarded-Host {host}
+	}
+}
