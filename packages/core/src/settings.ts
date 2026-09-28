@@ -95,12 +95,28 @@ export const homepageSectionSchema = z.object({
   body: z.string().max(5000).default(''),
   imageFileId: z.string().nullable().default(null),
   videoUrl: z.string().max(500).default(''),
-  buttons: z.array(z.object({ label: z.string().max(40), href: z.string().max(500), variant: z.enum(['primary', 'secondary', 'ghost']).default('primary') })).default([]),
+  buttons: z
+    .array(
+      z.object({
+        label: z.string().max(40),
+        href: z.string().max(500),
+        variant: z.enum(['primary', 'secondary', 'ghost']).default('primary'),
+      }),
+    )
+    .default([]),
   background: z.enum(['default', 'muted', 'brand', 'dark']).default('default'),
   align: z.enum(['left', 'center']).default('left'),
   visibility: z.enum(['ALL', 'ANONYMOUS', 'LOGGED_IN']).default('ALL'),
   hideOnMobile: z.boolean().default(false),
-  items: z.array(z.object({ title: z.string().max(200), text: z.string().max(1000).default(''), imageFileId: z.string().nullable().default(null) })).default([]),
+  items: z
+    .array(
+      z.object({
+        title: z.string().max(200),
+        text: z.string().max(1000).default(''),
+        imageFileId: z.string().nullable().default(null),
+      }),
+    )
+    .default([]),
 });
 export type HomepageSection = z.infer<typeof homepageSectionSchema>;
 export const homepageSchema = z.object({ sections: z.array(homepageSectionSchema).default([]) });
@@ -108,14 +124,18 @@ export type HomepageSettings = z.infer<typeof homepageSchema>;
 
 export const pricingDisplaySchema = z.object({
   mode: z.enum(['TOTAL_ONLY', 'BREAKDOWN']).default('BREAKDOWN'),
-  visibleLines: z.array(z.enum(['PRODUCT', 'INTERNATIONAL_FREIGHT', 'DOMESTIC_DELIVERY', 'SERVICE', 'DUTY_TAX', 'VAT'])).default(['PRODUCT', 'INTERNATIONAL_FREIGHT', 'DOMESTIC_DELIVERY', 'SERVICE', 'VAT']),
+  visibleLines: z
+    .array(z.enum(['PRODUCT', 'INTERNATIONAL_FREIGHT', 'DOMESTIC_DELIVERY', 'SERVICE', 'DUTY_TAX', 'VAT']))
+    .default(['PRODUCT', 'INTERNATIONAL_FREIGHT', 'DOMESTIC_DELIVERY', 'SERVICE', 'VAT']),
   showEstimatedBadge: z.boolean().default(true),
   baseCurrency: z.string().length(3).default('KRW'),
   vatPct: z.string().default('10'),
   vatRecoverable: z.boolean().default(true),
   quoteValidityDays: z.number().int().min(1).max(180).default(14),
   defaultPaymentTerms: z.string().max(500).default('계약금 30%, 선적 전 잔금 70%'),
-  certificationAllocation: z.enum(['FULL_ON_ORDER', 'AMORTIZE', 'COMPANY_EXPENSE', 'CUSTOMER_SEPARATE']).default('FULL_ON_ORDER'),
+  certificationAllocation: z
+    .enum(['FULL_ON_ORDER', 'AMORTIZE', 'COMPANY_EXPENSE', 'CUSTOMER_SEPARATE'])
+    .default('FULL_ON_ORDER'),
   roundingMode: z.enum(['HALF_UP', 'HALF_EVEN', 'UP', 'DOWN']).default('UP'),
   roundingStep: z.string().default('10'),
 });
@@ -185,7 +205,9 @@ export const SETTINGS_SECTION_KEYS = Object.keys(SETTINGS_SECTIONS) as SettingsS
 /** Sections that support preview-before-publish in the UI. */
 export const PREVIEWABLE_SECTIONS: SettingsSection[] = ['brand', 'homepage', 'footer', 'social'];
 
-export function defaultSettings<S extends SettingsSection>(section: S): z.infer<(typeof SETTINGS_SECTIONS)[S]> {
+export function defaultSettings<S extends SettingsSection>(
+  section: S,
+): z.infer<(typeof SETTINGS_SECTIONS)[S]> {
   return SETTINGS_SECTIONS[section].parse({}) as z.infer<(typeof SETTINGS_SECTIONS)[S]>;
 }
 
@@ -196,11 +218,17 @@ export function defaultHomepage(siteName: string): HomepageSettings {
         id: 'hero',
         type: 'HERO',
         title: '사진 한 장으로 시작하는 해외 소싱',
-        subtitle: '제품 사진이나 링크를 올리면 공급처, 예상 도착가격, 필요한 인증까지 한 번에 정리해 드립니다.',
+        subtitle:
+          '제품 사진이나 링크를 올리면 공급처, 예상 도착가격, 필요한 인증까지 한 번에 정리해 드립니다.',
         align: 'center',
         buttons: [{ label: '지금 검색하기', href: '/search', variant: 'primary' }],
       },
-      { id: 'search', type: 'IMAGE_SEARCH', title: '어떤 제품을 찾으세요?', subtitle: '사진, 상품 링크, 제품명 중 편한 방법으로 시작하세요.' },
+      {
+        id: 'search',
+        type: 'IMAGE_SEARCH',
+        title: '어떤 제품을 찾으세요?',
+        subtitle: '사진, 상품 링크, 제품명 중 편한 방법으로 시작하세요.',
+      },
       {
         id: 'how',
         type: 'HOW_IT_WORKS',
@@ -217,11 +245,22 @@ export function defaultHomepage(siteName: string): HomepageSettings {
         type: 'FAQ',
         title: '자주 묻는 질문',
         items: [
-          { title: '회원가입 없이도 검색할 수 있나요?', text: '네. 첫 검색은 가입 없이 가능하며, 견적을 받으려면 간단한 가입이 필요합니다.' },
-          { title: '표시되는 가격은 확정 가격인가요?', text: '검색 단계의 가격은 예상값입니다. 운임·관세·인증은 협력사 확인 후 견적에서 확정됩니다.' },
+          {
+            title: '회원가입 없이도 검색할 수 있나요?',
+            text: '네. 첫 검색은 가입 없이 가능하며, 견적을 받으려면 간단한 가입이 필요합니다.',
+          },
+          {
+            title: '표시되는 가격은 확정 가격인가요?',
+            text: '검색 단계의 가격은 예상값입니다. 운임·관세·인증은 협력사 확인 후 견적에서 확정됩니다.',
+          },
         ],
       },
-      { id: 'contact', type: 'CONTACT', title: '상담이 필요하신가요?', subtitle: `${siteName} 담당자가 도와드립니다.` },
+      {
+        id: 'contact',
+        type: 'CONTACT',
+        title: '상담이 필요하신가요?',
+        subtitle: `${siteName} 담당자가 도와드립니다.`,
+      },
     ],
   });
 }

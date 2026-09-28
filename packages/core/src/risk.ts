@@ -48,7 +48,9 @@ export function assessRisk(input: RiskInput): { items: RiskItem[]; overall: Risk
   };
 
   // Certification / compliance
-  const likely = (input.compliance ?? []).filter((c) => ['RULE_MATCHED', 'AI_LIKELY', 'CONFIRMED'].includes(c.status));
+  const likely = (input.compliance ?? []).filter((c) =>
+    ['RULE_MATCHED', 'AI_LIKELY', 'CONFIRMED'].includes(c.status),
+  );
   const certReasons: string[] = [];
   const traits: string[] = [];
   if (a.bluetooth === 'TRUE') traits.push('Bluetooth');
@@ -58,14 +60,28 @@ export function assessRisk(input: RiskInput): { items: RiskItem[]; overall: Risk
   if (a.children_product === 'TRUE') traits.push('어린이제품');
   if (a.food_contact === 'TRUE') traits.push('식품접촉');
   if (traits.length) certReasons.push(traits.join(' + '));
-  if (likely.length) certReasons.push(`인증 후보 ${likely.length}건: ${likely.map((l) => l.name).slice(0, 3).join(', ')}`);
-  const certLevel: RiskLevel = likely.length >= 3 || (traits.length >= 3 && likely.length > 0) ? 'HIGH' : likely.length > 0 ? 'MEDIUM' : 'LOW';
+  if (likely.length)
+    certReasons.push(
+      `인증 후보 ${likely.length}건: ${likely
+        .map((l) => l.name)
+        .slice(0, 3)
+        .join(', ')}`,
+    );
+  const certLevel: RiskLevel =
+    likely.length >= 3 || (traits.length >= 3 && likely.length > 0)
+      ? 'HIGH'
+      : likely.length > 0
+        ? 'MEDIUM'
+        : 'LOW';
   push('CERTIFICATION', certLevel, certReasons);
   if (a.medical_claim === 'TRUE' || a.cosmetic === 'TRUE' || a.biocide_claim === 'TRUE') {
     push('COMPLIANCE', 'HIGH', ['의료·화장품·살생물 표방 제품은 사전 허가/신고 대상일 수 있습니다.']);
   }
-  const unknownCount = (input.compliance ?? []).filter((c) => c.status === 'UNKNOWN' || c.status === 'AI_POSSIBLE').length;
-  if (unknownCount > 0) push('COMPLIANCE', unknownCount > 3 ? 'MEDIUM' : 'LOW', [`확인되지 않은 규제 항목 ${unknownCount}건`]);
+  const unknownCount = (input.compliance ?? []).filter(
+    (c) => c.status === 'UNKNOWN' || c.status === 'AI_POSSIBLE',
+  ).length;
+  if (unknownCount > 0)
+    push('COMPLIANCE', unknownCount > 3 ? 'MEDIUM' : 'LOW', [`확인되지 않은 규제 항목 ${unknownCount}건`]);
 
   // Battery / DG
   if (a.battery === 'TRUE') {
@@ -74,8 +90,14 @@ export function assessRisk(input: RiskInput): { items: RiskItem[]; overall: Risk
   if (a.flammable === 'TRUE' || a.pressure_vessel === 'TRUE' || input.freight?.dangerousGoods) {
     push('DG', 'HIGH', ['위험물 가능성: 운송수단 제한 및 추가 서류 필요']);
   }
-  if (a.liquid === 'TRUE' || a.magnet === 'TRUE') push('FREIGHT', 'MEDIUM', [a.liquid === 'TRUE' ? '액체 포함' : '자성 물질 포함'].concat(['운송사별 제한 확인 필요']));
-  if (input.freight && !input.freight.hasVerifiedRate) push('FREIGHT', 'LOW', ['확정 운임 없음 (추정치 기반)']);
+  if (a.liquid === 'TRUE' || a.magnet === 'TRUE')
+    push(
+      'FREIGHT',
+      'MEDIUM',
+      [a.liquid === 'TRUE' ? '액체 포함' : '자성 물질 포함'].concat(['운송사별 제한 확인 필요']),
+    );
+  if (input.freight && !input.freight.hasVerifiedRate)
+    push('FREIGHT', 'LOW', ['확정 운임 없음 (추정치 기반)']);
 
   // Customs
   if (input.hsVerified === false) {
@@ -121,21 +143,31 @@ export function assessRisk(input: RiskInput): { items: RiskItem[]; overall: Risk
     }
     if (s.lateDeliveryCount && s.orderCount) {
       const rate = s.lateDeliveryCount / s.orderCount;
-      if (rate > 0.1) push('DELIVERY', rate > 0.3 ? 'HIGH' : 'MEDIUM', [`납기 지연율 ${(rate * 100).toFixed(0)}%`]);
+      if (rate > 0.1)
+        push('DELIVERY', rate > 0.3 ? 'HIGH' : 'MEDIUM', [`납기 지연율 ${(rate * 100).toFixed(0)}%`]);
     }
   }
 
   if (input.brandOrIpSignals || (a.brand !== 'UNKNOWN' && a.brand.trim() !== '')) {
-    push('IP', 'MEDIUM', [`브랜드/상표 표시 확인됨${a.brand !== 'UNKNOWN' ? ` (${a.brand})` : ''}: 지식재산권 침해 여부 확인 필요`]);
+    push('IP', 'MEDIUM', [
+      `브랜드/상표 표시 확인됨${a.brand !== 'UNKNOWN' ? ` (${a.brand})` : ''}: 지식재산권 침해 여부 확인 필요`,
+    ]);
   }
   if (input.fx?.volatilityPct30d && input.fx.volatilityPct30d > 3) {
-    push('FX', input.fx.volatilityPct30d > 6 ? 'HIGH' : 'MEDIUM', [`최근 30일 환율 변동 ${input.fx.volatilityPct30d.toFixed(1)}%`]);
+    push('FX', input.fx.volatilityPct30d > 6 ? 'HIGH' : 'MEDIUM', [
+      `최근 30일 환율 변동 ${input.fx.volatilityPct30d.toFixed(1)}%`,
+    ]);
   }
   if (input.payment?.overdue) push('PAYMENT', 'HIGH', ['미수금 연체']);
-  if (input.market?.competitorCount && input.market.competitorCount > 200) push('MARKET', 'MEDIUM', [`국내 경쟁상품 ${input.market.competitorCount}개`]);
-  if (input.stalePriceDays && input.stalePriceDays > 14) push('MARKET', 'LOW', [`가격 확인 후 ${input.stalePriceDays}일 경과`]);
+  if (input.market?.competitorCount && input.market.competitorCount > 200)
+    push('MARKET', 'MEDIUM', [`국내 경쟁상품 ${input.market.competitorCount}개`]);
+  if (input.stalePriceDays && input.stalePriceDays > 14)
+    push('MARKET', 'LOW', [`가격 확인 후 ${input.stalePriceDays}일 경과`]);
   if (a.children_product === 'TRUE') push('PACKAGING', 'LOW', ['어린이제품 표시사항(KC·연령·경고문) 필요']);
 
   const overall = items.reduce<RiskLevel>((acc, i) => maxLevel(acc, i.level), 'LOW');
-  return { items: items.sort((x, y) => LEVEL_ORDER.indexOf(y.level) - LEVEL_ORDER.indexOf(x.level)), overall };
+  return {
+    items: items.sort((x, y) => LEVEL_ORDER.indexOf(y.level) - LEVEL_ORDER.indexOf(x.level)),
+    overall,
+  };
 }

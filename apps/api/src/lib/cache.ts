@@ -10,7 +10,11 @@ let redis: Redis | null = null;
 let redisHealthy = false;
 
 if (config.REDIS_URL) {
-  redis = new Redis(config.REDIS_URL, { lazyConnect: false, maxRetriesPerRequest: 1, enableOfflineQueue: false });
+  redis = new Redis(config.REDIS_URL, {
+    lazyConnect: false,
+    maxRetriesPerRequest: 1,
+    enableOfflineQueue: false,
+  });
   redis.on('ready', () => (redisHealthy = true));
   redis.on('error', () => (redisHealthy = false));
   redis.on('end', () => (redisHealthy = false));

@@ -20,8 +20,23 @@ export interface HsCandidate {
   source: string;
 }
 
-export async function findHsCandidates(tx: Tx, tenantId: string, attrs: ProductAttributes, extraText = ''): Promise<HsCandidate[]> {
-  const words = [attrs.product_name_ko, attrs.product_name_en, attrs.product_name_cn, attrs.category, attrs.subcategory, ...attrs.search_keywords_ko, ...attrs.search_keywords_en, ...attrs.search_keywords_cn, extraText]
+export async function findHsCandidates(
+  tx: Tx,
+  tenantId: string,
+  attrs: ProductAttributes,
+  extraText = '',
+): Promise<HsCandidate[]> {
+  const words = [
+    attrs.product_name_ko,
+    attrs.product_name_en,
+    attrs.product_name_cn,
+    attrs.category,
+    attrs.subcategory,
+    ...attrs.search_keywords_ko,
+    ...attrs.search_keywords_en,
+    ...attrs.search_keywords_cn,
+    extraText,
+  ]
     .filter((w) => w && w !== 'UNKNOWN')
     .join(' ');
   if (!words.trim()) return [];
@@ -52,7 +67,13 @@ export async function findHsCandidates(tx: Tx, tenantId: string, attrs: ProductA
       // Attribute consistency hints
       if (attrs.battery === 'TRUE' && r.code.startsWith('8507')) score += 0.5;
       if (attrs.electrical === 'FALSE' && /^8[45]/.test(r.code)) score -= 2;
-      return { code: r.code, description: r.descriptionKo || r.descriptionEn, score, reasons, source: r.source };
+      return {
+        code: r.code,
+        description: r.descriptionKo || r.descriptionEn,
+        score,
+        reasons,
+        source: r.source,
+      };
     })
     .filter((c) => c.score > 0)
     .sort((a, b) => b.score - a.score)
@@ -62,15 +83,37 @@ export async function findHsCandidates(tx: Tx, tenantId: string, attrs: ProductA
 }
 
 /** Optional LLM re-rank among existing candidates only. Unknown codes in the answer are discarded. */
-export async function rerankWithAi(tenantId: string, attrs: ProductAttributes, candidates: HsCandidate[]): Promise<{ ranked: HsCandidate[]; used: boolean; provider?: string }> {
+export async function rerankWithAi(
+  tenantId: string,
+  attrs: ProductAttributes,
+  candidates: HsCandidate[],
+): Promise<{ ranked: HsCandidate[]; used: boolean; provider?: string }> {
   if (candidates.length < 2) return { ranked: candidates, used: false };
   try {
     const r = await aiChat(
       tenantId,
       'HS_RERANK',
       [
-        { role: 'system', content: 'You help a Korean customs broker. Rank ONLY the given HS candidates for the product. Do not add new codes. Return JSON {"ranking":[{"code":"...","reason":"한국어 한 문장"}]}.' },
-        { role: 'user', content: JSON.stringify({ product: { name: attrs.product_name_ko, en: attrs.product_name_en, category: attrs.category, material: attrs.material, electrical: attrs.electrical, battery: attrs.battery, features: attrs.features }, candidates: candidates.map((c) => ({ code: c.code, description: c.description })) }) },
+        {
+          role: 'system',
+          content:
+            'You help a Korean customs broker. Rank ONLY the given HS candidates for the product. Do not add new codes. Return JSON {"ranking":[{"code":"...","reason":"한국어 한 문장"}]}.',
+        },
+        {
+          role: 'user',
+          content: JSON.stringify({
+            product: {
+              name: attrs.product_name_ko,
+              en: attrs.product_name_en,
+              category: attrs.category,
+              material: attrs.material,
+              electrical: attrs.electrical,
+              battery: attrs.battery,
+              features: attrs.features,
+            },
+            candidates: candidates.map((c) => ({ code: c.code, description: c.description })),
+          }),
+        },
       ],
       { json: true, maxTokens: 600 },
     );
@@ -79,7 +122,8 @@ export async function rerankWithAi(tenantId: string, attrs: ProductAttributes, c
     const ranked: HsCandidate[] = [];
     for (const item of parsed?.ranking ?? []) {
       const c = allowed.get(String(item.code).replace(/\D/g, ''));
-      if (c && !ranked.includes(c)) ranked.push({ ...c, reasons: item.reason ? [...c.reasons, `AI: ${item.reason}`] : c.reasons });
+      if (c && !ranked.includes(c))
+        ranked.push({ ...c, reasons: item.reason ? [...c.reasons, `AI: ${item.reason}`] : c.reasons });
     }
     for (const c of candidates) if (!ranked.find((x) => x.code === c.code)) ranked.push(c);
     return { ranked, used: true, provider: r.provider };
@@ -89,14 +133,22 @@ export async function rerankWithAi(tenantId: string, attrs: ProductAttributes, c
   }
 }
 
-export async function saveEstimatedHs(tx: Tx, tenantId: string, productId: string, candidates: HsCandidate[], source: string): Promise<void> {
+export async function saveEstimatedHs(
+  tx: Tx,
+  tenantId: string,
+  productId: string,
+  candidates: HsCandidate[],
+  source: string,
+): Promise<void> {
   const top = candidates[0] ?? null;
   const values = {
     tenantId,
     productId,
     candidates: candidates.slice(0, 3),
     estimatedHs: top?.code ?? null,
-    estimatedConfidence: top ? Math.min(0.9, 0.4 + top.score * 0.4 - (candidates[1] && candidates[1].score > 0.8 ? 0.15 : 0)) : null,
+    estimatedConfidence: top
+      ? Math.min(0.9, 0.4 + top.score * 0.4 - (candidates[1] && candidates[1].score > 0.8 ? 0.15 : 0))
+      : null,
     estimatedSource: source,
     updatedAt: new Date(),
   };
@@ -104,7 +156,16 @@ export async function saveEstimatedHs(tx: Tx, tenantId: string, productId: strin
   await tx
     .insert(hsClassifications)
     .values(values)
-    .onConflictDoUpdate({ target: hsClassifications.productId, set: { candidates: values.candidates, estimatedHs: values.estimatedHs, estimatedConfidence: values.estimatedConfidence, estimatedSource: values.estimatedSource, updatedAt: new Date() } });
+    .onConflictDoUpdate({
+      target: hsClassifications.productId,
+      set: {
+        candidates: values.candidates,
+        estimatedHs: values.estimatedHs,
+        estimatedConfidence: values.estimatedConfidence,
+        estimatedSource: values.estimatedSource,
+        updatedAt: new Date(),
+      },
+    });
 }
 
 export interface TariffOption {
@@ -119,13 +180,24 @@ export interface TariffOption {
 }
 
 /** Applicable tariff rates for an HS code (longest matching prefix), origin-aware. */
-export async function tariffOptions(tx: Tx, tenantId: string, hsCode: string | null, originCountry = 'CN'): Promise<TariffOption[]> {
+export async function tariffOptions(
+  tx: Tx,
+  tenantId: string,
+  hsCode: string | null,
+  originCountry = 'CN',
+): Promise<TariffOption[]> {
   if (!hsCode) return [];
   const clean = hsCode.replace(/\D/g, '');
   const rows = await tx
     .select()
     .from(tariffRates)
-    .where(and(or(isNull(tariffRates.tenantId), eq(tariffRates.tenantId, tenantId)), sql`${clean} like ${tariffRates.hsCode} || '%'`, or(eq(tariffRates.originCountry, '*'), eq(tariffRates.originCountry, originCountry))))
+    .where(
+      and(
+        or(isNull(tariffRates.tenantId), eq(tariffRates.tenantId, tenantId)),
+        sql`${clean} like ${tariffRates.hsCode} || '%'`,
+        or(eq(tariffRates.originCountry, '*'), eq(tariffRates.originCountry, originCountry)),
+      ),
+    )
     .orderBy(desc(sql`length(${tariffRates.hsCode})`));
   const best = new Map<string, (typeof rows)[number]>();
   for (const r of rows) if (!best.has(r.rateType)) best.set(r.rateType, r);

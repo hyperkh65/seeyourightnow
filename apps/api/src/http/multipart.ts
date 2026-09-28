@@ -8,7 +8,9 @@ export interface UploadedPart {
 }
 
 /** Reads a multipart request fully (limits enforced by @fastify/multipart). JSON bodies pass through as fields. */
-export async function readForm(req: FastifyRequest): Promise<{ fields: Record<string, string>; files: UploadedPart[] }> {
+export async function readForm(
+  req: FastifyRequest,
+): Promise<{ fields: Record<string, string>; files: UploadedPart[] }> {
   if (!req.isMultipart()) {
     const body = (req.body ?? {}) as Record<string, unknown>;
     const fields: Record<string, string> = {};

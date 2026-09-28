@@ -57,7 +57,9 @@ export const PERMISSIONS = [
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
-const ALL_TENANT: Permission[] = PERMISSIONS.filter((p) => p !== 'platform.manage' && p !== 'customer.portal' && p !== 'partner.tasks');
+const ALL_TENANT: Permission[] = PERMISSIONS.filter(
+  (p) => p !== 'platform.manage' && p !== 'customer.portal' && p !== 'partner.tasks',
+);
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   SUPER_ADMIN: [...PERMISSIONS],
@@ -128,11 +130,28 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   SUPPLIER_PARTNER: ['partner.tasks'],
   CUSTOMER_ADMIN: ['customer.portal'],
   CUSTOMER_USER: ['customer.portal'],
-  READ_ONLY: ['tenant.settings.read', 'crm.read', 'sourcing.read', 'supplier.read', 'market.read', 'compliance.read', 'hs.read', 'freight.read', 'quote.read', 'shipment.read', 'document.read', 'analytics.read'],
+  READ_ONLY: [
+    'tenant.settings.read',
+    'crm.read',
+    'sourcing.read',
+    'supplier.read',
+    'market.read',
+    'compliance.read',
+    'hs.read',
+    'freight.read',
+    'quote.read',
+    'shipment.read',
+    'document.read',
+    'analytics.read',
+  ],
 };
 
 /** Permissions that require a recent step-up authentication (re-auth / MFA within N minutes). */
-export const STEP_UP_PERMISSIONS: Permission[] = ['tenant.bank.write', 'tenant.connections.write', 'margin.manage'];
+export const STEP_UP_PERMISSIONS: Permission[] = [
+  'tenant.bank.write',
+  'tenant.connections.write',
+  'margin.manage',
+];
 
 export function hasPermission(roles: readonly Role[], perm: Permission): boolean {
   return roles.some((r) => ROLE_PERMISSIONS[r]?.includes(perm));

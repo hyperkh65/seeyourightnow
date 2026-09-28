@@ -26,13 +26,45 @@ export interface MarketItem {
   delivery: string;
 }
 
-const strip = (s: string) => s.replace(/<[^>]+>/g, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+const strip = (s: string) =>
+  s
+    .replace(/<[^>]+>/g, '')
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .trim();
 
-export async function naverShopping(conn: LoadedConnection, query: string, display = 40): Promise<MarketItem[]> {
+export async function naverShopping(
+  conn: LoadedConnection,
+  query: string,
+  display = 40,
+): Promise<MarketItem[]> {
   const url = `https://openapi.naver.com/v1/search/shop.json?query=${encodeURIComponent(query)}&display=${Math.min(100, display)}&sort=sim`;
-  const res = await safeFetch(url, { trusted: true, headers: { 'X-Naver-Client-Id': conn.secrets.clientId ?? '', 'X-Naver-Client-Secret': conn.secrets.clientSecret ?? '' } });
+  const res = await safeFetch(url, {
+    trusted: true,
+    headers: {
+      'X-Naver-Client-Id': conn.secrets.clientId ?? '',
+      'X-Naver-Client-Secret': conn.secrets.clientSecret ?? '',
+    },
+  });
   if (!res.ok) throw new Error(`NAVER HTTP ${res.status}`);
-  const json = (await res.json()) as { items?: Array<{ title: string; link: string; image: string; lprice: string; hprice: string; mallName: string; productId: string; brand: string; maker: string; category1: string; category2: string; category3: string }> };
+  const json = (await res.json()) as {
+    items?: Array<{
+      title: string;
+      link: string;
+      image: string;
+      lprice: string;
+      hprice: string;
+      mallName: string;
+      productId: string;
+      brand: string;
+      maker: string;
+      category1: string;
+      category2: string;
+      category3: string;
+    }>;
+  };
   return (json.items ?? []).map((i, idx) => ({
     platform: 'NAVER_SHOPPING',
     externalId: i.productId,
@@ -51,12 +83,40 @@ export async function naverShopping(conn: LoadedConnection, query: string, displ
   }));
 }
 
-export async function coupangPartners(conn: LoadedConnection, query: string, limit = 20): Promise<MarketItem[]> {
+export async function coupangPartners(
+  conn: LoadedConnection,
+  query: string,
+  limit = 20,
+): Promise<MarketItem[]> {
   const path = '/v2/providers/affiliate_open_api/apis/openapi/products/search';
   const q = `keyword=${encodeURIComponent(query)}&limit=${Math.min(10, limit)}`;
-  const res = await safeFetch(`https://api-gateway.coupang.com${path}?${q}`, { trusted: true, headers: { Authorization: coupangAuthorization('GET', path, q, conn.secrets.accessKey ?? '', conn.secrets.secretKey ?? '') } });
+  const res = await safeFetch(`https://api-gateway.coupang.com${path}?${q}`, {
+    trusted: true,
+    headers: {
+      Authorization: coupangAuthorization(
+        'GET',
+        path,
+        q,
+        conn.secrets.accessKey ?? '',
+        conn.secrets.secretKey ?? '',
+      ),
+    },
+  });
   if (!res.ok) throw new Error(`COUPANG HTTP ${res.status}`);
-  const json = (await res.json()) as { data?: { productData?: Array<{ productId: number; productName: string; productPrice: number; productImage: string; productUrl: string; rank: number; isRocket: boolean; categoryName: string }> } };
+  const json = (await res.json()) as {
+    data?: {
+      productData?: Array<{
+        productId: number;
+        productName: string;
+        productPrice: number;
+        productImage: string;
+        productUrl: string;
+        rank: number;
+        isRocket: boolean;
+        categoryName: string;
+      }>;
+    };
+  };
   return (json.data?.productData ?? []).map((p) => ({
     platform: 'COUPANG',
     externalId: String(p.productId),
@@ -81,7 +141,8 @@ export async function elevenst(conn: LoadedConnection, query: string, limit = 20
   if (!res.ok) throw new Error(`11ST HTTP ${res.status}`);
   const buf = Buffer.from(await res.arrayBuffer());
   const xml = new TextDecoder('euc-kr').decode(buf);
-  const tag = (block: string, name: string) => strip(new RegExp(`<${name}>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?</${name}>`).exec(block)?.[1] ?? '');
+  const tag = (block: string, name: string) =>
+    strip(new RegExp(`<${name}>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?</${name}>`).exec(block)?.[1] ?? '');
   const items = xml.match(/<Product>[\s\S]*?<\/Product>/g) ?? [];
   return items.map((b, idx) => ({
     platform: 'ELEVENST',
@@ -101,7 +162,11 @@ export async function elevenst(conn: LoadedConnection, query: string, limit = 20
   }));
 }
 
-export async function genericMarket(conn: LoadedConnection, query: string, limit = 20): Promise<MarketItem[]> {
+export async function genericMarket(
+  conn: LoadedConnection,
+  query: string,
+  limit = 20,
+): Promise<MarketItem[]> {
   const items = await genericSearch(conn, query, limit);
   const platform = String(conn.config.marketName ?? 'GENERIC').toUpperCase();
   return items.map((i, idx) => ({
@@ -147,7 +212,11 @@ export function marketStats(prices: number[]) {
   const min = p[0]!;
   const max = p[p.length - 1]!;
   const width = Math.max(1, Math.ceil((max - min + 1) / buckets));
-  const histogram = Array.from({ length: buckets }, (_, i) => ({ from: min + i * width, to: min + (i + 1) * width - 1, count: 0 }));
+  const histogram = Array.from({ length: buckets }, (_, i) => ({
+    from: min + i * width,
+    to: min + (i + 1) * width - 1,
+    count: 0,
+  }));
   for (const x of p) histogram[Math.min(buckets - 1, Math.floor((x - min) / width))]!.count++;
   return { count: p.length, min, p25: q(0.25), median: q(0.5), avg, p75: q(0.75), max, histogram };
 }

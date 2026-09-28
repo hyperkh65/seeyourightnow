@@ -30,9 +30,14 @@ export interface GenericItem {
   raw: unknown;
 }
 
-export async function genericSearch(rt: ConnectionRuntime, query: string, limit = 20): Promise<GenericItem[]> {
+export async function genericSearch(
+  rt: ConnectionRuntime,
+  query: string,
+  limit = 20,
+): Promise<GenericItem[]> {
   const template = String(rt.config.searchUrl ?? '');
-  if (!template.includes('{query}')) throw new AppError(400, 'CONFIG', '검색 URL에 {query} 자리표시자가 필요합니다.');
+  if (!template.includes('{query}'))
+    throw new AppError(400, 'CONFIG', '검색 URL에 {query} 자리표시자가 필요합니다.');
   let map: Record<string, string>;
   try {
     map = JSON.parse(String(rt.config.map ?? '{}')) as Record<string, string>;
@@ -41,13 +46,15 @@ export async function genericSearch(rt: ConnectionRuntime, query: string, limit 
   }
   const url = template.replace('{query}', encodeURIComponent(query));
   const headers: Record<string, string> = { Accept: 'application/json' };
-  if (rt.config.authHeader && rt.secrets.apiKey) headers[String(rt.config.authHeader)] = `${String(rt.config.authPrefix ?? '')}${rt.secrets.apiKey}`;
+  if (rt.config.authHeader && rt.secrets.apiKey)
+    headers[String(rt.config.authHeader)] = `${String(rt.config.authPrefix ?? '')}${rt.secrets.apiKey}`;
   const res = await safeFetch(url, { headers, timeoutMs: 15_000 });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = (await res.json()) as unknown;
   const items = getPath(json, String(rt.config.itemsPath ?? ''));
   if (!Array.isArray(items)) throw new Error('결과 배열 경로에서 배열을 찾지 못했습니다.');
-  const num = (v: unknown) => (v === undefined || v === null || v === '' || Number.isNaN(Number(v)) ? null : Number(v));
+  const num = (v: unknown) =>
+    v === undefined || v === null || v === '' || Number.isNaN(Number(v)) ? null : Number(v);
   const s = (v: unknown) => (v === undefined || v === null ? '' : String(v));
   const constOrPath = (item: unknown, spec: string | undefined, fallback: string) => {
     if (!spec) return fallback;
@@ -56,7 +63,10 @@ export async function genericSearch(rt: ConnectionRuntime, query: string, limit 
   };
   return items.slice(0, limit).map((it) => {
     const priceRaw = getPath(it, map.price ?? '');
-    const price = priceRaw === undefined || priceRaw === null || priceRaw === '' ? null : String(priceRaw).replace(/[^0-9.]/g, '') || null;
+    const price =
+      priceRaw === undefined || priceRaw === null || priceRaw === ''
+        ? null
+        : String(priceRaw).replace(/[^0-9.]/g, '') || null;
     return {
       externalId: s(getPath(it, map.externalId ?? 'id')),
       title: s(getPath(it, map.title ?? 'title')),

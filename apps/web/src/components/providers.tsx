@@ -1,7 +1,16 @@
 'use client';
 
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { CheckCircle2, ShieldCheck, XCircle } from 'lucide-react';
 import { api, ApiError, errorMessage, setStepUpHandler } from '@/lib/api';
 import type { Me, SiteConfig } from '@/lib/site';
@@ -35,7 +44,9 @@ interface ToastItem {
   tone: 'ok' | 'error' | 'info';
   text: string;
 }
-const ToastCtx = createContext<{ push: (tone: ToastItem['tone'], text: string) => void }>({ push: () => undefined });
+const ToastCtx = createContext<{ push: (tone: ToastItem['tone'], text: string) => void }>({
+  push: () => undefined,
+});
 export function useToast() {
   const { push } = useContext(ToastCtx);
   return useMemo(
@@ -58,7 +69,13 @@ export function useCan() {
   return useCallback((perm: string) => !!data?.permissions.includes(perm), [data]);
 }
 
-function StepUpDialog({ state, onDone }: { state: { open: boolean; resolve?: (ok: boolean) => void }; onDone: () => void }) {
+function StepUpDialog({
+  state,
+  onDone,
+}: {
+  state: { open: boolean; resolve?: (ok: boolean) => void };
+  onDone: () => void;
+}) {
   const [value, setValue] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -111,7 +128,13 @@ function StepUpDialog({ state, onDone }: { state: { open: boolean; resolve?: (ok
         }}
       >
         <Field label={totp ? '인증 앱의 6자리 코드' : '비밀번호'} error={err}>
-          <Input type={totp ? 'text' : 'password'} inputMode={totp ? 'numeric' : undefined} autoComplete={totp ? 'one-time-code' : 'current-password'} value={value} onChange={(e) => setValue(e.target.value)} />
+          <Input
+            type={totp ? 'text' : 'password'}
+            inputMode={totp ? 'numeric' : undefined}
+            autoComplete={totp ? 'one-time-code' : 'current-password'}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+          />
         </Field>
       </form>
     </Dialog>
@@ -132,7 +155,8 @@ export function Providers({ site, children }: { site: SiteConfig | null; childre
   );
   const [locale, setLocaleState] = useState<Locale>(site?.locale.defaultLocale ?? 'ko');
   useEffect(() => {
-    const saved = typeof localStorage !== 'undefined' ? (localStorage.getItem('locale') as Locale | null) : null;
+    const saved =
+      typeof localStorage !== 'undefined' ? (localStorage.getItem('locale') as Locale | null) : null;
     if (saved && DICTS[saved]) setLocaleState(saved);
   }, []);
   const i18n = useMemo<I18n>(
@@ -169,10 +193,20 @@ export function Providers({ site, children }: { site: SiteConfig | null; childre
           <ToastCtx.Provider value={{ push }}>
             {children}
             <StepUpDialog state={stepUp} onDone={() => setStepUp({ open: false })} />
-            <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[60] flex flex-col items-center gap-2 px-4 sm:bottom-6" aria-live="polite">
+            <div
+              className="pointer-events-none fixed inset-x-0 bottom-4 z-[60] flex flex-col items-center gap-2 px-4 sm:bottom-6"
+              aria-live="polite"
+            >
               {toasts.map((t) => (
-                <div key={t.id} className="pointer-events-auto flex max-w-md items-start gap-2.5 rounded-xl bg-slate-900 px-4 py-3 text-sm text-white shadow-pop animate-fade-in dark:bg-slate-100 dark:text-slate-900">
-                  {t.tone === 'ok' ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" /> : t.tone === 'error' ? <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" /> : null}
+                <div
+                  key={t.id}
+                  className="pointer-events-auto flex max-w-md items-start gap-2.5 rounded-xl bg-slate-900 px-4 py-3 text-sm text-white shadow-pop animate-fade-in dark:bg-slate-100 dark:text-slate-900"
+                >
+                  {t.tone === 'ok' ? (
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                  ) : t.tone === 'error' ? (
+                    <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+                  ) : null}
                   <span>{t.text}</span>
                 </div>
               ))}

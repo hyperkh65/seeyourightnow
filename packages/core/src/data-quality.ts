@@ -18,7 +18,12 @@ export type DataKind = keyof typeof DATA_TTL_HOURS;
 
 export type Freshness = 'FRESH' | 'AGING' | 'STALE' | 'UNKNOWN';
 
-export function freshness(kind: DataKind, lastCheckedAt: Date | string | null | undefined, now = new Date(), expiresAt?: Date | string | null): { status: Freshness; ageHours: number | null; label: string } {
+export function freshness(
+  kind: DataKind,
+  lastCheckedAt: Date | string | null | undefined,
+  now = new Date(),
+  expiresAt?: Date | string | null,
+): { status: Freshness; ageHours: number | null; label: string } {
   if (!lastCheckedAt) return { status: 'UNKNOWN', ageHours: null, label: '확인 시점 없음' };
   const t = new Date(lastCheckedAt).getTime();
   const ageHours = Math.max(0, (now.getTime() - t) / 3_600_000);

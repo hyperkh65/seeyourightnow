@@ -1,6 +1,6 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { ProductAttributes, SourceType } from '@sos/core';
-import { expiresAtFor } from '@sos/core';
+import { D, expiresAtFor } from '@sos/core';
 import { config } from '../../config.js';
 import type { Tx } from '../../db/client.js';
 import { listingPriceHistory, sourceListings, suppliers } from '../../db/schema/index.js';
@@ -41,7 +41,13 @@ export interface NormalizedListing {
   salesMetrics?: { sold30d?: number; reviews?: number; rating?: number };
   packaging?: Record<string, string | number>;
   shippingOrigin?: string;
-  seller?: { name: string; externalId?: string; location?: string; yearsInBusiness?: number | null; verified?: boolean | null };
+  seller?: {
+    name: string;
+    externalId?: string;
+    location?: string;
+    yearsInBusiness?: number | null;
+    verified?: boolean | null;
+  };
   isDevMock?: boolean;
   raw?: unknown;
 }
@@ -61,20 +67,43 @@ export interface ProductSourceConnector {
 
 // ───────────── Private network / internal DB ─────────────
 
-const PRIVATE_TYPES: SourceType[] = ['PRIVATE_NETWORK', 'DIRECT_FACTORY', 'LOCAL_PARTNER', 'INTERNAL_PRODUCT', 'RFQ_RESULT', 'MANUAL_PROPOSAL'];
+const PRIVATE_TYPES: SourceType[] = [
+  'PRIVATE_NETWORK',
+  'DIRECT_FACTORY',
+  'LOCAL_PARTNER',
+  'INTERNAL_PRODUCT',
+  'RFQ_RESULT',
+  'MANUAL_PROPOSAL',
+];
 
 /** Searches the tenant's own supply network (and previously collected listings) by text trigram, image hash and embedding. */
 export async function searchInternal(tx: Tx, tenantId: string, q: SourceQuery): Promise<string[]> {
-  const terms = [...q.keywordsKo, ...q.keywordsCn, ...q.keywordsEn, q.attributes.product_name_ko, q.attributes.product_name_en, q.attributes.product_name_cn]
+  const terms = [
+    ...q.keywordsKo,
+    ...q.keywordsCn,
+    ...q.keywordsEn,
+    q.attributes.product_name_ko,
+    q.attributes.product_name_en,
+    q.attributes.product_name_cn,
+  ]
     .filter((t) => t && t !== 'UNKNOWN')
     .slice(0, 8);
   const ids = new Set<string>();
   if (terms.length) {
-    const conds = terms.map((t) => sql`(similarity(${sourceListings.title}, ${t}) > 0.15 or similarity(${sourceListings.titleKo}, ${t}) > 0.15 or ${sourceListings.title} ilike ${'%' + t + '%'} or ${sourceListings.titleKo} ilike ${'%' + t + '%'})`);
+    const conds = terms.map(
+      (t) =>
+        sql`(similarity(${sourceListings.title}, ${t}) > 0.15 or similarity(${sourceListings.titleKo}, ${t}) > 0.15 or ${sourceListings.title} ilike ${'%' + t + '%'} or ${sourceListings.titleKo} ilike ${'%' + t + '%'})`,
+    );
     const rows = await tx
       .select({ id: sourceListings.id })
       .from(sourceListings)
-      .where(and(eq(sourceListings.tenantId, tenantId), sql`(${sql.join(conds, sql` or `)})`, config.DEV_MODE ? sql`true` : eq(sourceListings.isDevMock, false)))
+      .where(
+        and(
+          eq(sourceListings.tenantId, tenantId),
+          sql`(${sql.join(conds, sql` or `)})`,
+          config.DEV_MODE ? sql`true` : eq(sourceListings.isDevMock, false),
+        ),
+      )
       .limit(q.limit * 2);
     rows.forEach((r) => ids.add(r.id));
   }
@@ -87,7 +116,11 @@ export async function searchInternal(tx: Tx, tenantId: string, q: SourceQuery): 
     rows.rows.filter((r) => r.distance < 0.35).forEach((r) => ids.add(r.owner_id));
   }
   if (q.phash) {
-    const rows = await tx.select({ id: sourceListings.id, phash: sourceListings.phash }).from(sourceListings).where(and(eq(sourceListings.tenantId, tenantId), sql`${sourceListings.phash} is not null`)).limit(5000);
+    const rows = await tx
+      .select({ id: sourceListings.id, phash: sourceListings.phash })
+      .from(sourceListings)
+      .where(and(eq(sourceListings.tenantId, tenantId), sql`${sourceListings.phash} is not null`))
+      .limit(5000);
     const { phashSimilarity } = await import('@sos/core');
     rows.filter((r) => (phashSimilarity(q.phash, r.phash) ?? 0) >= 0.85).forEach((r) => ids.add(r.id));
   }
@@ -130,22 +163,41 @@ export function parse1688OfferId(url: string): string | null {
   return m?.[1] ?? null;
 }
 
-async function call1688(conn: LoadedConnection, apiPath: string, params: Record<string, string>): Promise<unknown> {
+async function call1688(
+  conn: LoadedConnection,
+  apiPath: string,
+  params: Record<string, string>,
+): Promise<unknown> {
   const gateway = String(conn.config.gateway ?? 'https://gw.open.1688.com/openapi');
   const appKey = conn.secrets.appKey ?? '';
   const urlPath = `${apiPath.replace(/^\/+/, '')}/${appKey}`;
-  const all: Record<string, string> = { ...params, ...(conn.secrets.accessToken ? { access_token: conn.secrets.accessToken } : {}), _aop_timestamp: String(Date.now()) };
+  const all: Record<string, string> = {
+    ...params,
+    ...(conn.secrets.accessToken ? { access_token: conn.secrets.accessToken } : {}),
+    _aop_timestamp: String(Date.now()),
+  };
   all._aop_signature = aopSignature(urlPath, all, conn.secrets.appSecret ?? '');
-  const res = await safeFetch(`${gateway}/${urlPath}`, { method: 'POST', trusted: true, timeoutMs: 15_000, headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(all).toString() });
+  const res = await safeFetch(`${gateway}/${urlPath}`, {
+    method: 'POST',
+    trusted: true,
+    timeoutMs: 15_000,
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(all).toString(),
+  });
   const json = (await res.json().catch(() => null)) as Record<string, unknown> | null;
   if (!res.ok || !json) throw new Error(`1688 API HTTP ${res.status}`);
-  if (json.error_code || json.errorCode) throw new Error(`1688 API ${String(json.error_code ?? json.errorCode)}: ${String(json.error_message ?? json.errorMessage ?? '')}`);
+  if (json.error_code || json.errorCode)
+    throw new Error(
+      `1688 API ${String(json.error_code ?? json.errorCode)}: ${String(json.error_message ?? json.errorMessage ?? '')}`,
+    );
   return json;
 }
 
 /** Maps a 1688 product-detail response (productInfo) into the normalized listing. Unknown fields stay empty. */
 export function map1688Product(offerId: string, json: unknown): NormalizedListing | null {
-  const info = ((json as Record<string, unknown>).productInfo ?? (json as Record<string, unknown>).result ?? json) as Record<string, unknown>;
+  const info = ((json as Record<string, unknown>).productInfo ??
+    (json as Record<string, unknown>).result ??
+    json) as Record<string, unknown>;
   const subject = String(info.subject ?? info.subjectTrans ?? '');
   if (!subject) return null;
   const sale = (info.saleInfo ?? {}) as Record<string, unknown>;
@@ -159,15 +211,22 @@ export function map1688Product(offerId: string, json: unknown): NormalizedListin
     url: `https://detail.1688.com/offer/${offerId}.html`,
     title: subject,
     currency: 'CNY',
-    priceTiers: ranges.filter((r) => r.price !== undefined).map((r) => ({ minQty: Number(r.startQuantity ?? 1), unitPrice: String(r.price) })),
+    priceTiers: ranges
+      .filter((r) => r.price !== undefined)
+      .map((r) => ({ minQty: Number(r.startQuantity ?? 1), unitPrice: String(r.price) })),
     moq: sale.minOrderQuantity !== undefined ? Number(sale.minOrderQuantity) : null,
     imageUrls: images.map((i) => (i.startsWith('http') ? i : `https://cbu01.alicdn.com/${i}`)),
-    specs: Object.fromEntries(attrs.filter((a) => a.attributeName && a.value).map((a) => [a.attributeName!, a.value!])),
+    specs: Object.fromEntries(
+      attrs.filter((a) => a.attributeName && a.value).map((a) => [a.attributeName!, a.value!]),
+    ),
     raw: json,
   };
 }
 
-export async function get1688Product(conn: LoadedConnection, offerId: string): Promise<NormalizedListing | null> {
+export async function get1688Product(
+  conn: LoadedConnection,
+  offerId: string,
+): Promise<NormalizedListing | null> {
   const api = String(conn.config.productGetApi ?? '');
   if (!api) return null;
   const json = await call1688(conn, api, { productID: offerId, webSite: '1688' });
@@ -185,13 +244,24 @@ export async function search1688(conn: LoadedConnection, q: SourceQuery): Promis
     }
   }
   if (!api || !q.keywordsCn[0]) return out;
-  const json = (await call1688(conn, api, { keywords: q.keywordsCn[0], pageSize: String(q.limit), beginPage: '1' })) as Record<string, unknown>;
-  const list = (((json.result as Record<string, unknown> | undefined)?.data ?? (json.result as Record<string, unknown> | undefined)?.offerList ?? json.data ?? []) as Array<Record<string, unknown>>) ?? [];
+  const json = (await call1688(conn, api, {
+    keywords: q.keywordsCn[0],
+    pageSize: String(q.limit),
+    beginPage: '1',
+  })) as Record<string, unknown>;
+  const list =
+    (((json.result as Record<string, unknown> | undefined)?.data ??
+      (json.result as Record<string, unknown> | undefined)?.offerList ??
+      json.data ??
+      []) as Array<Record<string, unknown>>) ?? [];
   for (const it of list) {
     const id = String(it.offerId ?? it.id ?? '');
     const title = String(it.subject ?? it.subjectTrans ?? it.title ?? '');
     if (!id || !title) continue;
-    const price = it.priceInfo && typeof it.priceInfo === 'object' ? (it.priceInfo as Record<string, unknown>).price : it.price;
+    const price =
+      it.priceInfo && typeof it.priceInfo === 'object'
+        ? (it.priceInfo as Record<string, unknown>).price
+        : it.price;
     out.push({
       connector: 'ALIBABA_1688_OPEN',
       sourceType: 'PUBLIC_MARKET',
@@ -212,7 +282,10 @@ export async function search1688(conn: LoadedConnection, q: SourceQuery): Promis
 
 export function devMockListings(q: SourceQuery): NormalizedListing[] {
   if (!config.DEV_MODE) return [];
-  const base = q.attributes.product_name_cn !== 'UNKNOWN' ? q.attributes.product_name_cn : (q.keywordsCn[0] ?? q.keywordsKo[0] ?? 'product');
+  const base =
+    q.attributes.product_name_cn !== 'UNKNOWN'
+      ? q.attributes.product_name_cn
+      : (q.keywordsCn[0] ?? q.keywordsKo[0] ?? 'product');
   const seed = [...base].reduce((a, c) => a + c.charCodeAt(0), 0);
   const rnd = (i: number) => ((seed * 9301 + i * 49297) % 233280) / 233280;
   return Array.from({ length: 6 }, (_, i) => {
@@ -227,13 +300,17 @@ export function devMockListings(q: SourceQuery): NormalizedListing[] {
       currency: 'CNY',
       priceTiers: [
         { minQty: 1, unitPrice: price },
-        { minQty: 500, unitPrice: (Number(price) * 0.9).toFixed(2) },
+        { minQty: 500, unitPrice: new D(price).mul('0.9').toFixed(2) },
       ],
       moq: [50, 100, 200, 500, 1000, 100][i]!,
       leadTimeDays: [15, 20, 25, 30, 12, 18][i]!,
       imageUrls: [],
       specs: {},
-      seller: { name: `[DEV MOCK] 供应商 ${i + 1}`, yearsInBusiness: [1, 3, 5, 8, 2, 10][i]!, verified: i % 2 === 0 },
+      seller: {
+        name: `[DEV MOCK] 供应商 ${i + 1}`,
+        yearsInBusiness: [1, 3, 5, 8, 2, 10][i]!,
+        verified: i % 2 === 0,
+      },
       isDevMock: true,
     };
   });
@@ -242,18 +319,36 @@ export function devMockListings(q: SourceQuery): NormalizedListing[] {
 // ───────────── persistence ─────────────
 
 /** Upserts normalized listings (and their public-market suppliers) and records price history. */
-export async function upsertListings(tx: Tx, tenantId: string, items: NormalizedListing[]): Promise<string[]> {
+export async function upsertListings(
+  tx: Tx,
+  tenantId: string,
+  items: NormalizedListing[],
+): Promise<string[]> {
   const ids: string[] = [];
   for (const it of items) {
     let supplierId: string | null = null;
     if (it.seller?.name) {
-      const [s] = await tx.select({ id: suppliers.id }).from(suppliers).where(and(eq(suppliers.tenantId, tenantId), eq(suppliers.name, it.seller.name))).limit(1);
+      const [s] = await tx
+        .select({ id: suppliers.id })
+        .from(suppliers)
+        .where(and(eq(suppliers.tenantId, tenantId), eq(suppliers.name, it.seller.name)))
+        .limit(1);
       supplierId =
         s?.id ??
         (
           await tx
             .insert(suppliers)
-            .values({ tenantId, name: it.seller.name, sourceType: it.sourceType, visibility: 'ALIAS', alias: 'Marketplace Supplier', yearsInBusiness: it.seller.yearsInBusiness ?? null, businessVerified: it.seller.verified ?? null, city: it.seller.location ?? '', externalRefs: it.seller.externalId ? { [it.connector]: it.seller.externalId } : {} })
+            .values({
+              tenantId,
+              name: it.seller.name,
+              sourceType: it.sourceType,
+              visibility: 'ALIAS',
+              alias: 'Marketplace Supplier',
+              yearsInBusiness: it.seller.yearsInBusiness ?? null,
+              businessVerified: it.seller.verified ?? null,
+              city: it.seller.location ?? '',
+              externalRefs: it.seller.externalId ? { [it.connector]: it.seller.externalId } : {},
+            })
             .returning({ id: suppliers.id })
         )[0]!.id;
     }
@@ -286,10 +381,22 @@ export async function upsertListings(tx: Tx, tenantId: string, items: Normalized
     const [row] = await tx
       .insert(sourceListings)
       .values(values)
-      .onConflictDoUpdate({ target: [sourceListings.tenantId, sourceListings.connector, sourceListings.externalId], targetWhere: sql`${sourceListings.externalId} <> ''`, set: { ...values, collectedAt: undefined } as never })
+      .onConflictDoUpdate({
+        target: [sourceListings.tenantId, sourceListings.connector, sourceListings.externalId],
+        targetWhere: sql`${sourceListings.externalId} <> ''`,
+        set: { ...values, collectedAt: undefined } as never,
+      })
       .returning({ id: sourceListings.id });
     ids.push(row!.id);
-    if (firstPrice) await tx.insert(listingPriceHistory).values({ tenantId, listingId: row!.id, unitPrice: firstPrice, currency: it.currency, moq: it.moq, sellerName: it.seller?.name ?? null });
+    if (firstPrice)
+      await tx.insert(listingPriceHistory).values({
+        tenantId,
+        listingId: row!.id,
+        unitPrice: firstPrice,
+        currency: it.currency,
+        moq: it.moq,
+        sellerName: it.seller?.name ?? null,
+      });
   }
   return ids;
 }

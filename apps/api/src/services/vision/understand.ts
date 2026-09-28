@@ -1,4 +1,10 @@
-import { emptyAttributes, keywordSignals, mergeAttributes, productAttributesSchema, type ProductAttributes } from '@sos/core';
+import {
+  emptyAttributes,
+  keywordSignals,
+  mergeAttributes,
+  productAttributesSchema,
+  type ProductAttributes,
+} from '@sos/core';
 import { aiChat, aiWorker, AiUnavailableError, parseJsonLoose } from '../ai/router.js';
 import { visionThumbnail } from './phash.js';
 
@@ -82,68 +88,152 @@ export async function understandProduct(input: UnderstandInput): Promise<Underst
         errors?: Record<string, string>;
       }>('/v1/analyze', { image_base64: b64, tasks: ['segment', 'ocr', 'caption', 'embed'] }, 90_000);
       if (r.subject?.box) subjectBox = r.subject.box;
-      steps.push({ step: 'segment', status: r.subject ? 'DONE' : 'SKIPPED', provider: 'AI_WORKER', message: r.errors?.segment });
+      steps.push({
+        step: 'segment',
+        status: r.subject ? 'DONE' : 'SKIPPED',
+        provider: 'AI_WORKER',
+        message: r.errors?.segment,
+      });
       if (r.ocr?.text) {
         ocrText = r.ocr.text;
         steps.push({ step: 'ocr', status: 'DONE', provider: r.ocr.engine });
-      } else steps.push({ step: 'ocr', status: 'SKIPPED', provider: 'AI_WORKER', message: r.errors?.ocr ?? '인식된 텍스트 없음' });
+      } else
+        steps.push({
+          step: 'ocr',
+          status: 'SKIPPED',
+          provider: 'AI_WORKER',
+          message: r.errors?.ocr ?? '인식된 텍스트 없음',
+        });
       if (r.caption?.text) {
         caption = r.caption.text;
         steps.push({ step: 'caption', status: 'DONE', provider: r.caption.model });
-      } else steps.push({ step: 'caption', status: 'SKIPPED', provider: 'AI_WORKER', message: r.errors?.caption });
+      } else
+        steps.push({ step: 'caption', status: 'SKIPPED', provider: 'AI_WORKER', message: r.errors?.caption });
       if (r.embedding?.vector?.length) {
         embedding = r.embedding.vector;
         embeddingModel = r.embedding.model;
         steps.push({ step: 'embedding', status: 'DONE', provider: r.embedding.model });
-      } else steps.push({ step: 'embedding', status: 'SKIPPED', provider: 'AI_WORKER', message: r.errors?.embed });
+      } else
+        steps.push({ step: 'embedding', status: 'SKIPPED', provider: 'AI_WORKER', message: r.errors?.embed });
     } catch (e) {
-      steps.push({ step: 'ai_worker', status: 'FAILED', message: e instanceof Error ? e.message : String(e) });
+      steps.push({
+        step: 'ai_worker',
+        status: 'FAILED',
+        message: e instanceof Error ? e.message : String(e),
+      });
     }
   } else {
-    steps.push({ step: 'ai_worker', status: 'SKIPPED', message: 'AI 워커(OCR·임베딩)가 연결되지 않았습니다.' });
+    steps.push({
+      step: 'ai_worker',
+      status: 'SKIPPED',
+      message: 'AI 워커(OCR·임베딩)가 연결되지 않았습니다.',
+    });
   }
 
   // 3. Vision / text LLM structuring
-  const textBlock = [input.text && `사용자 입력: ${input.text}`, ocrText && `OCR: ${ocrText}`, caption && `Caption: ${caption}`].filter(Boolean).join('\n');
+  const textBlock = [
+    input.text && `사용자 입력: ${input.text}`,
+    ocrText && `OCR: ${ocrText}`,
+    caption && `Caption: ${caption}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
   try {
-    const content: Array<{ type: 'text'; text: string } | { type: 'image'; mime: string; base64: string }> = [];
+    const content: Array<{ type: 'text'; text: string } | { type: 'image'; mime: string; base64: string }> =
+      [];
     for (const img of input.images.slice(0, 3)) {
       const thumb = await visionThumbnail(img.buffer);
       content.push({ type: 'image', mime: 'image/jpeg', base64: thumb.toString('base64') });
     }
     content.push({ type: 'text', text: textBlock || '제품 사진을 분석하세요.' });
-    const r = await aiChat(input.tenantId, input.images.length ? 'VISION_UNDERSTAND' : 'TEXT_STRUCTURE', [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content }], {
-      vision: input.images.length > 0,
-      json: true,
-      maxTokens: 1400,
-    });
+    const r = await aiChat(
+      input.tenantId,
+      input.images.length ? 'VISION_UNDERSTAND' : 'TEXT_STRUCTURE',
+      [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content },
+      ],
+      {
+        vision: input.images.length > 0,
+        json: true,
+        maxTokens: 1400,
+      },
+    );
     const parsed = parseJsonLoose<Record<string, unknown>>(r.text);
     if (parsed) {
       const safe = productAttributesSchema.partial().safeParse(normalizeLlm(parsed));
       if (safe.success) {
         apply(safe.data, `${r.provider}:${r.model}`);
-        steps.push({ step: 'structure', status: 'DONE', provider: `${r.provider}${r.fallbackUsed ? ' (fallback)' : ''}` });
-      } else steps.push({ step: 'structure', status: 'FAILED', provider: r.provider, message: 'AI 응답 형식 오류' });
-    } else steps.push({ step: 'structure', status: 'FAILED', provider: r.provider, message: 'AI 응답을 해석하지 못했습니다.' });
+        steps.push({
+          step: 'structure',
+          status: 'DONE',
+          provider: `${r.provider}${r.fallbackUsed ? ' (fallback)' : ''}`,
+        });
+      } else
+        steps.push({
+          step: 'structure',
+          status: 'FAILED',
+          provider: r.provider,
+          message: 'AI 응답 형식 오류',
+        });
+    } else
+      steps.push({
+        step: 'structure',
+        status: 'FAILED',
+        provider: r.provider,
+        message: 'AI 응답을 해석하지 못했습니다.',
+      });
   } catch (e) {
-    steps.push({ step: 'structure', status: e instanceof AiUnavailableError ? 'SKIPPED' : 'FAILED', message: e instanceof Error ? e.message : String(e) });
+    steps.push({
+      step: 'structure',
+      status: e instanceof AiUnavailableError ? 'SKIPPED' : 'FAILED',
+      message: e instanceof Error ? e.message : String(e),
+    });
   }
 
   // 4. Keyword signals (only fill UNKNOWNs, low confidence)
   const signals = keywordSignals([input.text, ocrText, caption].filter(Boolean).join(' '));
   if (Object.keys(signals).length) {
     const fill: Partial<ProductAttributes> = {};
-    for (const [k, v] of Object.entries(signals)) if (attrs[k as keyof ProductAttributes] === 'UNKNOWN') (fill as Record<string, unknown>)[k] = v;
+    for (const [k, v] of Object.entries(signals))
+      if (attrs[k as keyof ProductAttributes] === 'UNKNOWN') (fill as Record<string, unknown>)[k] = v;
     apply(fill, 'KEYWORD_HEURISTIC');
     steps.push({ step: 'keyword_signals', status: 'DONE', message: '키워드 기반 추정(낮은 신뢰도)' });
   }
-  if (ocrText) apply({ visible_text: ocrText.split(/\n+/).map((s) => s.trim()).filter(Boolean).slice(0, 20) }, 'OCR');
+  if (ocrText)
+    apply(
+      {
+        visible_text: ocrText
+          .split(/\n+/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .slice(0, 20),
+      },
+      'OCR',
+    );
   if (attrs.product_name_ko === 'UNKNOWN' && input.text.trim()) {
-    apply({ product_name_ko: input.text.trim().split('\n')[0]!.slice(0, 80), search_keywords_ko: [input.text.trim().slice(0, 40)] }, 'USER_INPUT');
+    apply(
+      {
+        product_name_ko: input.text.trim().split('\n')[0]!.slice(0, 80),
+        search_keywords_ko: [input.text.trim().slice(0, 40)],
+      },
+      'USER_INPUT',
+    );
   }
-  if (!sources.category && attrs.confidence === 0) attrs = { ...attrs, confidence: Object.keys(signals).length ? 0.2 : 0 };
+  if (!sources.category && attrs.confidence === 0)
+    attrs = { ...attrs, confidence: Object.keys(signals).length ? 0.2 : 0 };
 
-  return { attributes: attrs, conflicts, attributeSources: sources, ocrText, caption, embedding, embeddingModel, subjectBox, steps };
+  return {
+    attributes: attrs,
+    conflicts,
+    attributeSources: sources,
+    ocrText,
+    caption,
+    embedding,
+    embeddingModel,
+    subjectBox,
+    steps,
+  };
 }
 
 /** LLMs sometimes return booleans/null instead of tri-state strings; normalise safely. */

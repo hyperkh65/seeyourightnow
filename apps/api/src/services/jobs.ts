@@ -10,7 +10,10 @@ import { logger } from '../lib/logger.js';
  * Retries use exponential backoff; dead-lettered jobs can be re-queued from the admin UI.
  */
 
-export type JobHandler = (payload: Record<string, unknown>, ctx: { tenantId: string; jobId: string; attempt: number; tx: Tx }) => Promise<unknown>;
+export type JobHandler = (
+  payload: Record<string, unknown>,
+  ctx: { tenantId: string; jobId: string; attempt: number; tx: Tx },
+) => Promise<unknown>;
 
 const handlers = new Map<string, { fn: JobHandler; transactional: boolean }>();
 
@@ -29,7 +32,13 @@ export interface EnqueueOptions {
   dedupeKey?: string;
 }
 
-export async function enqueue(tx: Tx, tenantId: string, type: string, payload: Record<string, unknown>, opts: EnqueueOptions = {}): Promise<string | null> {
+export async function enqueue(
+  tx: Tx,
+  tenantId: string,
+  type: string,
+  payload: Record<string, unknown>,
+  opts: EnqueueOptions = {},
+): Promise<string | null> {
   const [row] = await tx
     .insert(jobs)
     .values({
@@ -64,7 +73,13 @@ async function claim(limit: number) {
     if (!ids.length) return [];
     return tx
       .update(jobs)
-      .set({ status: 'RUNNING', lockedAt: new Date(), lockedBy: workerId, attempts: sql`${jobs.attempts} + 1`, updatedAt: new Date() })
+      .set({
+        status: 'RUNNING',
+        lockedAt: new Date(),
+        lockedBy: workerId,
+        attempts: sql`${jobs.attempts} + 1`,
+        updatedAt: new Date(),
+      })
       .where(inArray(jobs.id, ids))
       .returning();
   });
@@ -76,18 +91,44 @@ export async function runJob(job: typeof jobs.$inferSelect): Promise<void> {
     if (!h) throw new Error(`No handler registered for job type ${job.type}`);
     let result: unknown;
     if (h.transactional) {
-      result = await withTenant({ tenantId: job.tenantId }, (tx) => h.fn(job.payload, { tenantId: job.tenantId, jobId: job.id, attempt: job.attempts, tx }));
+      result = await withTenant({ tenantId: job.tenantId }, (tx) =>
+        h.fn(job.payload, { tenantId: job.tenantId, jobId: job.id, attempt: job.attempts, tx }),
+      );
     } else {
       // Non-transactional handlers manage their own short transactions via withTenant (no tx is held open
       // across slow external calls). Accessing ctx.tx there is a programming error.
-      const noTx = new Proxy({}, { get: () => { throw new Error('non-transactional job must use withTenant()'); } }) as Tx;
-      result = await h.fn(job.payload, { tenantId: job.tenantId, jobId: job.id, attempt: job.attempts, tx: noTx });
+      const noTx = new Proxy(
+        {},
+        {
+          get: () => {
+            throw new Error('non-transactional job must use withTenant()');
+          },
+        },
+      ) as Tx;
+      result = await h.fn(job.payload, {
+        tenantId: job.tenantId,
+        jobId: job.id,
+        attempt: job.attempts,
+        tx: noTx,
+      });
     }
-    await systemDb.update(jobs).set({ status: 'SUCCESS', result: (result ?? null) as never, finishedAt: new Date(), lastError: null, updatedAt: new Date() }).where(eq(jobs.id, job.id));
+    await systemDb
+      .update(jobs)
+      .set({
+        status: 'SUCCESS',
+        result: (result ?? null) as never,
+        finishedAt: new Date(),
+        lastError: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(jobs.id, job.id));
   } catch (e) {
     const message = e instanceof Error ? `${e.message}` : String(e);
     const dead = job.attempts >= job.maxAttempts;
-    logger.warn({ jobId: job.id, type: job.type, attempt: job.attempts, err: message }, dead ? 'job dead-lettered' : 'job failed, will retry');
+    logger.warn(
+      { jobId: job.id, type: job.type, attempt: job.attempts, err: message },
+      dead ? 'job dead-lettered' : 'job failed, will retry',
+    );
     await systemDb
       .update(jobs)
       .set({
@@ -107,7 +148,13 @@ export async function runJob(job: typeof jobs.$inferSelect): Promise<void> {
 export async function recoverStuckJobs(): Promise<number> {
   const r = await systemDb
     .update(jobs)
-    .set({ status: 'RETRYING', lockedAt: null, lockedBy: null, lastError: 'worker lost (recovered)', updatedAt: new Date() })
+    .set({
+      status: 'RETRYING',
+      lockedAt: null,
+      lockedBy: null,
+      lastError: 'worker lost (recovered)',
+      updatedAt: new Date(),
+    })
     .where(and(eq(jobs.status, 'RUNNING'), lte(jobs.lockedAt, new Date(Date.now() - 15 * 60_000))))
     .returning({ id: jobs.id });
   return r.length;

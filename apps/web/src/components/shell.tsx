@@ -41,19 +41,35 @@ function NotificationBell() {
   const qc = useQueryClient();
   const router = useRouter();
   const ref = useRef<HTMLDivElement>(null);
-  const q = useQuery({ queryKey: ['notifications'], queryFn: () => api.get<{ items: Notification[]; unread: number }>('/notifications'), refetchInterval: 60_000 });
-  const readAll = useMutation({ mutationFn: () => api.post('/notifications/read-all'), onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }) });
+  const q = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => api.get<{ items: Notification[]; unread: number }>('/notifications'),
+    refetchInterval: 60_000,
+  });
+  const readAll = useMutation({
+    mutationFn: () => api.post('/notifications/read-all'),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  });
   useEffect(() => {
-    const onClick = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
+    const onClick = (e: MouseEvent) =>
+      ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
     document.addEventListener('mousedown', onClick);
     return () => document.removeEventListener('mousedown', onClick);
   }, []);
   const unread = q.data?.unread ?? 0;
   return (
     <div className="relative" ref={ref}>
-      <button onClick={() => setOpen((o) => !o)} className="relative rounded-lg p-2 text-ink-muted hover:bg-ink/5" aria-label={`알림 ${unread}건`}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="relative rounded-lg p-2 text-ink-muted hover:bg-ink/5"
+        aria-label={`알림 ${unread}건`}
+      >
         <Bell className="h-5 w-5" />
-        {unread > 0 && <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">{unread > 99 ? '99+' : unread}</span>}
+        {unread > 0 && (
+          <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+            {unread > 99 ? '99+' : unread}
+          </span>
+        )}
       </button>
       {open && (
         <div className="absolute right-0 top-11 z-50 w-[min(92vw,380px)] overflow-hidden rounded-2xl border border-line bg-surface shadow-pop animate-fade-in">
@@ -82,9 +98,23 @@ function NotificationBell() {
                     void qc.invalidateQueries({ queryKey: ['notifications'] });
                     if (n.link) router.push(n.link);
                   }}
-                  className={cn('flex w-full gap-3 border-b border-line/60 px-4 py-3 text-left hover:bg-surface-sunken', !n.readAt && 'bg-brand/[0.03]')}
+                  className={cn(
+                    'flex w-full gap-3 border-b border-line/60 px-4 py-3 text-left hover:bg-surface-sunken',
+                    !n.readAt && 'bg-brand/[0.03]',
+                  )}
                 >
-                  <span className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', n.readAt ? 'bg-transparent' : n.severity === 'WARNING' ? 'bg-amber-500' : n.severity === 'CRITICAL' ? 'bg-red-500' : 'bg-brand')} />
+                  <span
+                    className={cn(
+                      'mt-1.5 h-2 w-2 shrink-0 rounded-full',
+                      n.readAt
+                        ? 'bg-transparent'
+                        : n.severity === 'WARNING'
+                          ? 'bg-amber-500'
+                          : n.severity === 'CRITICAL'
+                            ? 'bg-red-500'
+                            : 'bg-brand',
+                    )}
+                  />
                   <span className="min-w-0">
                     <span className="block text-sm text-ink">{n.title}</span>
                     {n.body && <span className="mt-0.5 block text-xs text-ink-muted">{n.body}</span>}
@@ -106,7 +136,8 @@ function UserMenu() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const onClick = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
+    const onClick = (e: MouseEvent) =>
+      ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
     document.addEventListener('mousedown', onClick);
     return () => document.removeEventListener('mousedown', onClick);
   }, []);
@@ -114,9 +145,16 @@ function UserMenu() {
   if (!u) return null;
   return (
     <div className="relative" ref={ref}>
-      <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-2 rounded-lg p-1 pr-2 hover:bg-ink/5" aria-label="계정 메뉴" aria-expanded={open}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 rounded-lg p-1 pr-2 hover:bg-ink/5"
+        aria-label="계정 메뉴"
+        aria-expanded={open}
+      >
         <Avatar name={u.name || u.email} />
-        <span className="hidden max-w-[120px] truncate text-sm font-medium text-ink sm:block">{u.name || u.email}</span>
+        <span className="hidden max-w-[120px] truncate text-sm font-medium text-ink sm:block">
+          {u.name || u.email}
+        </span>
         <ChevronDown className="hidden h-4 w-4 text-ink-muted sm:block" />
       </button>
       {open && (
@@ -125,10 +163,17 @@ function UserMenu() {
             <p className="truncate text-sm font-medium">{u.name}</p>
             <p className="truncate text-xs text-ink-muted">{u.email}</p>
           </div>
-          <Link href="/account/security" onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-surface-sunken">
+          <Link
+            href="/account/security"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-surface-sunken"
+          >
             <UserCog className="h-4 w-4 text-ink-muted" /> 계정·보안
           </Link>
-          <button onClick={logout} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-surface-sunken">
+          <button
+            onClick={logout}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-surface-sunken"
+          >
             <LogOut className="h-4 w-4 text-ink-muted" /> 로그아웃
           </button>
         </div>
@@ -145,11 +190,17 @@ function NavList({ groups, onNavigate }: { groups: NavGroup[]; onNavigate?: () =
   return (
     <nav className="space-y-5" aria-label="메뉴">
       {groups.map((g, gi) => {
-        const items = g.items.filter((i) => (!i.perm || perms.has(i.perm)) && (!i.feature || features.has(i.feature)));
+        const items = g.items.filter(
+          (i) => (!i.perm || perms.has(i.perm)) && (!i.feature || features.has(i.feature)),
+        );
         if (!items.length) return null;
         return (
           <div key={gi}>
-            {g.title && <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-ink-muted/80">{g.title}</p>}
+            {g.title && (
+              <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wider text-ink-muted/80">
+                {g.title}
+              </p>
+            )}
             <ul className="space-y-0.5">
               {items.map((i) => {
                 const active = i.exact ? path === i.href : path === i.href || path.startsWith(`${i.href}/`);
@@ -159,11 +210,18 @@ function NavList({ groups, onNavigate }: { groups: NavGroup[]; onNavigate?: () =
                       href={i.href}
                       onClick={onNavigate}
                       aria-current={active ? 'page' : undefined}
-                      className={cn('flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13.5px] font-medium transition-colors', active ? 'bg-brand/10 text-brand' : 'text-ink-soft hover:bg-ink/5 hover:text-ink')}
+                      className={cn(
+                        'flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13.5px] font-medium transition-colors',
+                        active ? 'bg-brand/10 text-brand' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+                      )}
                     >
                       <i.icon className="h-4 w-4 shrink-0" />
                       <span className="flex-1 truncate">{i.label}</span>
-                      {!!i.badge && <span className="rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">{i.badge}</span>}
+                      {!!i.badge && (
+                        <span className="rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                          {i.badge}
+                        </span>
+                      )}
                     </Link>
                   </li>
                 );
@@ -181,7 +239,19 @@ function NavList({ groups, onNavigate }: { groups: NavGroup[]; onNavigate?: () =
  * audiences are sent to their own home. Server-side authorisation is always
  * enforced by the API — this only shapes the UI.
  */
-export function AppShell({ audience, groups, children, bottomNav, title }: { audience: Array<'STAFF' | 'CUSTOMER' | 'PARTNER' | 'PLATFORM'>; groups: NavGroup[]; children: ReactNode; bottomNav?: NavItem[]; title?: string }) {
+export function AppShell({
+  audience,
+  groups,
+  children,
+  bottomNav,
+  title,
+}: {
+  audience: Array<'STAFF' | 'CUSTOMER' | 'PARTNER' | 'PLATFORM'>;
+  groups: NavGroup[];
+  children: ReactNode;
+  bottomNav?: NavItem[];
+  title?: string;
+}) {
   const me = useMe();
   const router = useRouter();
   const path = usePathname();
@@ -191,7 +261,8 @@ export function AppShell({ audience, groups, children, bottomNav, title }: { aud
   useEffect(() => {
     if (me.isLoading) return;
     if (!user) router.replace(`/login?next=${encodeURIComponent(path)}`);
-    else if (user.mfaSetupRequired && !path.startsWith('/account')) router.replace('/account/security?setup=1');
+    else if (user.mfaSetupRequired && !path.startsWith('/account'))
+      router.replace('/account/security?setup=1');
     else if (user.mfaPending) router.replace('/login/mfa');
     else if (!audience.includes(user.audience)) router.replace(homeFor(user.audience));
   }, [me.isLoading, user, audience, router, path]);
@@ -208,10 +279,15 @@ export function AppShell({ audience, groups, children, bottomNav, title }: { aud
     <div className="min-h-screen">
       {user.impersonating && (
         <div className="flex items-center justify-center gap-2 bg-red-600 px-4 py-1.5 text-xs font-semibold text-white">
-          <ShieldAlert className="h-3.5 w-3.5" /> 지원 목적으로 다른 사용자 권한으로 접속 중입니다. 모든 작업이 기록됩니다.
+          <ShieldAlert className="h-3.5 w-3.5" /> 지원 목적으로 다른 사용자 권한으로 접속 중입니다. 모든
+          작업이 기록됩니다.
         </div>
       )}
-      {me.data?.tenant?.isDemo && <div className="bg-amber-100 px-4 py-1 text-center text-[11px] font-medium text-amber-900 dark:bg-amber-500/20 dark:text-amber-100">DEMO 환경 — 표시되는 운임·관세·환율·공급처는 데모 데이터입니다.</div>}
+      {me.data?.tenant?.isDemo && (
+        <div className="bg-amber-100 px-4 py-1 text-center text-[11px] font-medium text-amber-900 dark:bg-amber-500/20 dark:text-amber-100">
+          DEMO 환경 — 표시되는 운임·관세·환율·공급처는 데모 데이터입니다.
+        </div>
+      )}
       <div className="flex">
         <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-line bg-surface lg:flex">
           <div className="flex h-16 items-center px-5">
@@ -227,7 +303,11 @@ export function AppShell({ audience, groups, children, bottomNav, title }: { aud
             <div className="absolute inset-y-0 left-0 flex w-72 flex-col bg-surface shadow-pop animate-fade-in">
               <div className="flex h-16 items-center justify-between px-5">
                 <BrandMark href={homeFor(user.audience)} />
-                <button onClick={() => setDrawer(false)} className="rounded-lg p-1.5 hover:bg-ink/5" aria-label="메뉴 닫기">
+                <button
+                  onClick={() => setDrawer(false)}
+                  className="rounded-lg p-1.5 hover:bg-ink/5"
+                  aria-label="메뉴 닫기"
+                >
                   <X className="h-5 w-5" />
                 </button>
               </div>
@@ -240,7 +320,11 @@ export function AppShell({ audience, groups, children, bottomNav, title }: { aud
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-line bg-surface/85 px-4 backdrop-blur sm:h-16 sm:px-6">
             <div className="flex items-center gap-2">
-              <button onClick={() => setDrawer(true)} className="rounded-lg p-2 hover:bg-ink/5 lg:hidden" aria-label="메뉴 열기">
+              <button
+                onClick={() => setDrawer(true)}
+                className="rounded-lg p-2 hover:bg-ink/5 lg:hidden"
+                aria-label="메뉴 열기"
+              >
                 <Menu className="h-5 w-5" />
               </button>
               <div className="lg:hidden">
@@ -250,19 +334,36 @@ export function AppShell({ audience, groups, children, bottomNav, title }: { aud
             </div>
             <div className="flex items-center gap-1">
               <ThemeToggle />
-              <NotificationBell />
+              {user.audience !== 'PLATFORM' && <NotificationBell />}
               <UserMenu />
             </div>
           </header>
-          <main className={cn('mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 sm:py-8', bottomNav && 'pb-24 lg:pb-8')}>{children}</main>
+          <main
+            className={cn(
+              'mx-auto w-full max-w-[1400px] flex-1 px-4 py-6 sm:px-6 sm:py-8',
+              bottomNav && 'pb-24 lg:pb-8',
+            )}
+          >
+            {children}
+          </main>
         </div>
       </div>
       {bottomNav && (
-        <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden" aria-label="하단 메뉴">
+        <nav
+          className="fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
+          aria-label="하단 메뉴"
+        >
           {bottomNav.map((i) => {
             const active = i.exact ? path === i.href : path.startsWith(i.href);
             return (
-              <Link key={i.href} href={i.href} className={cn('flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium', active ? 'text-brand' : 'text-ink-muted')}>
+              <Link
+                key={i.href}
+                href={i.href}
+                className={cn(
+                  'flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium',
+                  active ? 'text-brand' : 'text-ink-muted',
+                )}
+              >
                 <i.icon className="h-5 w-5" />
                 {i.label}
               </Link>

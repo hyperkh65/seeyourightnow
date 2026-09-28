@@ -9,7 +9,11 @@ const SYMBOL: Record<string, string> = { KRW: '₩', USD: '$', CNY: '¥', EUR: '
 const PRECISION: Record<string, number> = { KRW: 0, JPY: 0 };
 
 /** Formats a decimal string for display without floating-point arithmetic on the value itself. */
-export function formatMoney(value: string | number | null | undefined, currency = 'KRW', opts: { symbol?: boolean; precision?: number } = {}): string {
+export function formatMoney(
+  value: string | number | null | undefined,
+  currency = 'KRW',
+  opts: { symbol?: boolean; precision?: number } = {},
+): string {
   if (value === null || value === undefined || value === '') return '—';
   const s = String(value);
   const neg = s.startsWith('-');
@@ -40,7 +44,13 @@ export function formatDate(v: string | Date | null | undefined, withTime = false
   if (!v) return '—';
   const d = typeof v === 'string' ? new Date(v) : v;
   if (Number.isNaN(d.getTime())) return String(v);
-  const f = new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', ...(withTime ? { hour: '2-digit', minute: '2-digit', hour12: false } : {}) });
+  const f = new Intl.DateTimeFormat('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    ...(withTime ? { hour: '2-digit', minute: '2-digit', hour12: false } : {}),
+  });
   return f.format(d).replace(/\.\s?/g, '.').replace(/\.$/, '');
 }
 
@@ -80,5 +90,12 @@ export function softTint(hex: string): string {
 export function initials(name: string): string {
   const t = name.trim();
   if (!t) return '?';
-  return /[가-힣]/.test(t) ? t.slice(0, 1) : t.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+  return /[가-힣]/.test(t)
+    ? t.slice(0, 1)
+    : t
+        .split(/\s+/)
+        .map((w) => w[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase();
 }

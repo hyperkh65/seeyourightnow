@@ -13,9 +13,17 @@ export type Db = NodePgDatabase<typeof schema>;
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
 /** Runtime pool: role sos_app, Row Level Security enforced. */
-export const appPool = new pg.Pool({ connectionString: config.DATABASE_URL, max: config.DB_POOL_MAX, application_name: 'sos-api' });
+export const appPool = new pg.Pool({
+  connectionString: config.DATABASE_URL,
+  max: config.DB_POOL_MAX,
+  application_name: 'sos-api',
+});
 /** Trusted system pool: role sos_system (BYPASSRLS). Only for auth, job polling, tenant resolution and platform admin. */
-export const systemPool = new pg.Pool({ connectionString: config.DATABASE_SYSTEM_URL, max: Math.max(4, Math.floor(config.DB_POOL_MAX / 2)), application_name: 'sos-system' });
+export const systemPool = new pg.Pool({
+  connectionString: config.DATABASE_SYSTEM_URL,
+  max: Math.max(4, Math.floor(config.DB_POOL_MAX / 2)),
+  application_name: 'sos-system',
+});
 
 export const appDb: Db = drizzle(appPool, { schema });
 export const systemDb: Db = drizzle(systemPool, { schema });
@@ -32,7 +40,9 @@ export interface TenantContext {
 export async function withTenant<T>(ctx: TenantContext, fn: (tx: Tx) => Promise<T>): Promise<T> {
   if (!ctx.tenantId) throw new Error('withTenant requires tenantId');
   return appDb.transaction(async (tx) => {
-    await tx.execute(sql`select set_config('app.tenant_id', ${ctx.tenantId}, true), set_config('app.user_id', ${ctx.userId ?? ''}, true)`);
+    await tx.execute(
+      sql`select set_config('app.tenant_id', ${ctx.tenantId}, true), set_config('app.user_id', ${ctx.userId ?? ''}, true)`,
+    );
     return fn(tx);
   });
 }

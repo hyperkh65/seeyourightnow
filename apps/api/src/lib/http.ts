@@ -45,12 +45,15 @@ export async function assertPublicUrl(raw: string): Promise<URL> {
   } catch {
     throw new AppError(400, 'INVALID_URL', '올바른 URL이 아닙니다.');
   }
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new AppError(400, 'INVALID_URL', 'http(s) URL만 허용됩니다.');
-  if (url.username || url.password) throw new AppError(400, 'INVALID_URL', '인증정보가 포함된 URL은 허용되지 않습니다.');
+  if (url.protocol !== 'https:' && url.protocol !== 'http:')
+    throw new AppError(400, 'INVALID_URL', 'http(s) URL만 허용됩니다.');
+  if (url.username || url.password)
+    throw new AppError(400, 'INVALID_URL', '인증정보가 포함된 URL은 허용되지 않습니다.');
   const host = url.hostname.replace(/^\[|\]$/g, '');
   const addrs = net.isIP(host) ? [{ address: host }] : await lookup(host, { all: true }).catch(() => []);
   if (addrs.length === 0) throw new AppError(400, 'INVALID_URL', '호스트를 찾을 수 없습니다.');
-  if (addrs.some((a) => isPrivateAddress(a.address))) throw new AppError(400, 'BLOCKED_URL', '내부 네트워크 주소는 허용되지 않습니다.');
+  if (addrs.some((a) => isPrivateAddress(a.address)))
+    throw new AppError(400, 'BLOCKED_URL', '내부 네트워크 주소는 허용되지 않습니다.');
   return url;
 }
 
@@ -66,7 +69,11 @@ export async function safeFetch(raw: string, opts: SafeFetchOptions = {}): Promi
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? 15_000);
   try {
-    const res = await fetch(raw, { ...opts, redirect: opts.trusted ? 'follow' : 'manual', signal: controller.signal });
+    const res = await fetch(raw, {
+      ...opts,
+      redirect: opts.trusted ? 'follow' : 'manual',
+      signal: controller.signal,
+    });
     if (!opts.trusted && res.status >= 300 && res.status < 400) {
       const loc = res.headers.get('location');
       if (!loc) return res;

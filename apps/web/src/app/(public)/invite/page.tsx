@@ -30,21 +30,38 @@ function InviteForm() {
   return (
     <div className="mx-auto max-w-md px-4 py-16">
       <h1 className="text-center text-2xl font-bold">초대를 수락합니다</h1>
-      <p className="mt-2 text-center text-sm text-ink-muted">사용할 비밀번호를 정하면 바로 시작할 수 있습니다.</p>
+      <p className="mt-2 text-center text-sm text-ink-muted">
+        사용할 비밀번호를 정하면 바로 시작할 수 있습니다.
+      </p>
       <Card className="mt-8">
         <CardBody>
           {!token ? (
             <Alert tone="danger">초대 링크가 올바르지 않습니다.</Alert>
           ) : (
-            <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); void submit(); }}>
+            <form
+              className="space-y-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void submit();
+              }}
+            >
               <Field label="이름" hint="선택">
                 <Input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
               </Field>
               <Field label="비밀번호" hint="10자 이상">
-                <Input type="password" autoComplete="new-password" minLength={10} value={password} onChange={(e) => setPassword(e.target.value)} required />
+                <Input
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={10}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
               </Field>
               {error && <Alert tone="danger">{error}</Alert>}
-              <Button type="submit" className="w-full" loading={busy}>시작하기</Button>
+              <Button type="submit" className="w-full" loading={busy}>
+                시작하기
+              </Button>
             </form>
           )}
         </CardBody>

@@ -26,8 +26,15 @@ export async function loadConnection(tx: Tx, row: ConnectionRow): Promise<Loaded
 }
 
 /** Enabled connections that provide a capability, excluding those with an open circuit breaker. */
-export async function connectionsWithCapability(tx: Tx, tenantId: string, capability: string): Promise<LoadedConnection[]> {
-  const rows = await tx.select().from(apiConnections).where(and(eq(apiConnections.tenantId, tenantId), eq(apiConnections.enabled, true)));
+export async function connectionsWithCapability(
+  tx: Tx,
+  tenantId: string,
+  capability: string,
+): Promise<LoadedConnection[]> {
+  const rows = await tx
+    .select()
+    .from(apiConnections)
+    .where(and(eq(apiConnections.tenantId, tenantId), eq(apiConnections.enabled, true)));
   const now = Date.now();
   const out: LoadedConnection[] = [];
   for (const r of rows) {
@@ -47,12 +54,26 @@ export async function connectionById(tx: Tx, id: string): Promise<LoadedConnecti
 }
 
 /** Records the outcome of a real call: updates status/last success/last error and the circuit breaker. */
-export async function recordConnectionResult(tenantId: string, connectionId: string, ok: boolean, error?: string): Promise<void> {
+export async function recordConnectionResult(
+  tenantId: string,
+  connectionId: string,
+  ok: boolean,
+  error?: string,
+): Promise<void> {
   await withTenant({ tenantId }, async (tx) => {
     const [row] = await tx.select().from(apiConnections).where(eq(apiConnections.id, connectionId)).limit(1);
     if (!row) return;
     if (ok) {
-      await tx.update(apiConnections).set({ status: 'CONNECTED', lastSuccessAt: new Date(), consecutiveFailures: 0, circuitOpenUntil: null, updatedAt: new Date() }).where(eq(apiConnections.id, connectionId));
+      await tx
+        .update(apiConnections)
+        .set({
+          status: 'CONNECTED',
+          lastSuccessAt: new Date(),
+          consecutiveFailures: 0,
+          circuitOpenUntil: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(apiConnections.id, connectionId));
     } else {
       const failures = row.consecutiveFailures + 1;
       await tx
@@ -61,7 +82,8 @@ export async function recordConnectionResult(tenantId: string, connectionId: str
           status: 'ERROR',
           lastError: (error ?? 'error').slice(0, 1000),
           consecutiveFailures: failures,
-          circuitOpenUntil: failures >= CIRCUIT_THRESHOLD ? new Date(Date.now() + CIRCUIT_OPEN_MS) : row.circuitOpenUntil,
+          circuitOpenUntil:
+            failures >= CIRCUIT_THRESHOLD ? new Date(Date.now() + CIRCUIT_OPEN_MS) : row.circuitOpenUntil,
           updatedAt: new Date(),
         })
         .where(eq(apiConnections.id, connectionId));

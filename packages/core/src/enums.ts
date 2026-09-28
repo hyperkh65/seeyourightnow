@@ -98,7 +98,10 @@ export const COMPLIANCE_STATUSES = [
 export type ComplianceStatus = (typeof COMPLIANCE_STATUSES)[number];
 
 /** Customer-friendly wording for compliance states. Internal jargon never reaches customers. */
-export const COMPLIANCE_CUSTOMER_LABEL: Record<ComplianceStatus, { ko: string; en: string; tone: 'neutral' | 'warn' | 'ok' | 'info' }> = {
+export const COMPLIANCE_CUSTOMER_LABEL: Record<
+  ComplianceStatus,
+  { ko: string; en: string; tone: 'neutral' | 'warn' | 'ok' | 'info' }
+> = {
   NOT_APPLICABLE: { ko: '해당 없음', en: 'Not applicable', tone: 'neutral' },
   UNKNOWN: { ko: '확인 필요', en: 'To be checked', tone: 'neutral' },
   AI_POSSIBLE: { ko: '필요할 수 있음', en: 'May be required', tone: 'info' },
@@ -223,7 +226,12 @@ export const SHIPMENT_EVENT_TYPES = [
 ] as const;
 export type ShipmentEventType = (typeof SHIPMENT_EVENT_TYPES)[number];
 
-export const SHIPMENT_EVENT_SOURCES = ['CARRIER_CONFIRMED', 'AIS_INFERRED', 'FORWARDER_REPORTED', 'MANUAL'] as const;
+export const SHIPMENT_EVENT_SOURCES = [
+  'CARRIER_CONFIRMED',
+  'AIS_INFERRED',
+  'FORWARDER_REPORTED',
+  'MANUAL',
+] as const;
 export type ShipmentEventSource = (typeof SHIPMENT_EVENT_SOURCES)[number];
 
 export const ETA_SOURCES = ['CARRIER', 'AIS', 'HISTORICAL', 'INTERNAL_ML', 'FORWARDER', 'MANUAL'] as const;
@@ -282,7 +290,12 @@ export const ADMIN_PRICE_REASONS = [
 ] as const;
 export type AdminPriceReason = (typeof ADMIN_PRICE_REASONS)[number];
 
-export const CERT_COST_ALLOCATIONS = ['FULL_ON_ORDER', 'AMORTIZE', 'COMPANY_EXPENSE', 'CUSTOMER_SEPARATE'] as const;
+export const CERT_COST_ALLOCATIONS = [
+  'FULL_ON_ORDER',
+  'AMORTIZE',
+  'COMPANY_EXPENSE',
+  'CUSTOMER_SEPARATE',
+] as const;
 export type CertCostAllocation = (typeof CERT_COST_ALLOCATIONS)[number];
 
 export const SUPPLIER_VISIBILITY = ['HIDDEN', 'ALIAS', 'VISIBLE'] as const;

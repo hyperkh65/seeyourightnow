@@ -29,14 +29,35 @@ export function collectPositions(apiKey: string, mmsis: string[], windowMs = 20_
       resolve([...positions.values()]);
     }, windowMs);
     ws.on('open', () => {
-      ws.send(JSON.stringify({ APIKey: apiKey, BoundingBoxes: [[[-90, -180], [90, 180]]], FiltersShipMMSI: mmsis.slice(0, 50), FilterMessageTypes: ['PositionReport'] }));
+      ws.send(
+        JSON.stringify({
+          APIKey: apiKey,
+          BoundingBoxes: [
+            [
+              [-90, -180],
+              [90, 180],
+            ],
+          ],
+          FiltersShipMMSI: mmsis.slice(0, 50),
+          FilterMessageTypes: ['PositionReport'],
+        }),
+      );
     });
     ws.on('message', (data) => {
       try {
         const msg = JSON.parse(data.toString()) as {
           error?: string;
           MetaData?: { MMSI?: number; latitude?: number; longitude?: number; time_utc?: string };
-          Message?: { PositionReport?: { Latitude: number; Longitude: number; Sog: number; Cog: number; TrueHeading: number; NavigationalStatus: number } };
+          Message?: {
+            PositionReport?: {
+              Latitude: number;
+              Longitude: number;
+              Sog: number;
+              Cog: number;
+              TrueHeading: number;
+              NavigationalStatus: number;
+            };
+          };
         };
         if (msg.error) {
           clearTimeout(timer);
@@ -55,7 +76,9 @@ export function collectPositions(apiKey: string, mmsis: string[], windowMs = 20_
           cog: Number.isFinite(pr.Cog) ? pr.Cog : null,
           heading: pr.TrueHeading === 511 ? null : pr.TrueHeading,
           navStatus: String(pr.NavigationalStatus),
-          observedAt: msg.MetaData?.time_utc ? new Date(msg.MetaData.time_utc.replace(' +0000 UTC', 'Z').replace(' ', 'T')) : new Date(),
+          observedAt: msg.MetaData?.time_utc
+            ? new Date(msg.MetaData.time_utc.replace(' +0000 UTC', 'Z').replace(' ', 'T'))
+            : new Date(),
         });
       } catch {
         /* ignore malformed frames */
@@ -76,12 +99,28 @@ export async function testAisStream(apiKey: string): Promise<TestResult> {
       ws.close();
       resolve({ ok: true, message: '연결 성공 (스트림 수신 대기)' });
     }, 6000);
-    ws.on('open', () => ws.send(JSON.stringify({ APIKey: apiKey, BoundingBoxes: [[[34, 128], [36, 130]]] })));
+    ws.on('open', () =>
+      ws.send(
+        JSON.stringify({
+          APIKey: apiKey,
+          BoundingBoxes: [
+            [
+              [34, 128],
+              [36, 130],
+            ],
+          ],
+        }),
+      ),
+    );
     ws.on('message', (d) => {
       const text = d.toString();
       clearTimeout(timer);
       ws.close();
-      resolve(text.includes('error') ? { ok: false, message: text.slice(0, 200) } : { ok: true, message: '연결 성공 (AIS 메시지 수신)' });
+      resolve(
+        text.includes('error')
+          ? { ok: false, message: text.slice(0, 200) }
+          : { ok: true, message: '연결 성공 (AIS 메시지 수신)' },
+      );
     });
     ws.on('error', (e) => {
       clearTimeout(timer);

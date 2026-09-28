@@ -1,8 +1,16 @@
-import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  createHmac,
+  randomBytes,
+  timingSafeEqual,
+} from 'node:crypto';
 import { config } from '../config.js';
 
 export const sha256Hex = (data: string | Buffer) => createHash('sha256').update(data).digest('hex');
-export const hmacHex = (data: string, key = config.signingKey) => createHmac('sha256', key).update(data).digest('hex');
+export const hmacHex = (data: string, key = config.signingKey) =>
+  createHmac('sha256', key).update(data).digest('hex');
 export const randomToken = (bytes = 32) => randomBytes(bytes).toString('base64url');
 
 export function safeEqual(a: string, b: string): boolean {
@@ -17,7 +25,12 @@ export function encrypt(plain: string, key: Buffer | null = config.masterKey): s
   const iv = randomBytes(12);
   const cipher = createCipheriv('aes-256-gcm', key, iv);
   const ct = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
-  return ['v1', iv.toString('base64url'), cipher.getAuthTag().toString('base64url'), ct.toString('base64url')].join('.');
+  return [
+    'v1',
+    iv.toString('base64url'),
+    cipher.getAuthTag().toString('base64url'),
+    ct.toString('base64url'),
+  ].join('.');
 }
 
 export function decrypt(payload: string, key: Buffer | null = config.masterKey): string {

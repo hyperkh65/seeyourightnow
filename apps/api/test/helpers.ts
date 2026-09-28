@@ -27,7 +27,12 @@ export class Client {
     return [...this.cookies.entries()].map(([k, v]) => `${k}=${v}`).join('; ');
   }
 
-  async request(method: string, url: string, body?: unknown, headers: Record<string, string> = {}): Promise<LightMyRequestResponse> {
+  async request(
+    method: string,
+    url: string,
+    body?: unknown,
+    headers: Record<string, string> = {},
+  ): Promise<LightMyRequestResponse> {
     const res = await this.app.inject({
       method: method as 'GET',
       url: `/api/v1${url}`,

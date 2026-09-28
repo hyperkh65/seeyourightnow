@@ -1,7 +1,12 @@
 import { withTenant, type Tx } from '../../db/client.js';
 import { aiUsage } from '../../db/schema/index.js';
 import { safeFetch } from '../../lib/http.js';
-import { connectionById, connectionsWithCapability, recordConnectionResult, type LoadedConnection } from '../connections/index.js';
+import {
+  connectionById,
+  connectionsWithCapability,
+  recordConnectionResult,
+  type LoadedConnection,
+} from '../connections/index.js';
 import { getPublished } from '../settings.js';
 
 /**
@@ -13,7 +18,8 @@ import { getPublished } from '../settings.js';
  * tariff rates or anything that must come from official data.
  */
 
-export type AiTask = 'VISION_UNDERSTAND' | 'TEXT_STRUCTURE' | 'TRANSLATE' | 'HS_RERANK' | 'RFQ_PARSE' | 'DOC_EXTRACT';
+export type AiTask =
+  'VISION_UNDERSTAND' | 'TEXT_STRUCTURE' | 'TRANSLATE' | 'HS_RERANK' | 'RFQ_PARSE' | 'DOC_EXTRACT';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -41,10 +47,17 @@ interface CallOutcome {
   model: string;
 }
 
-async function callOpenAiCompatible(conn: LoadedConnection, messages: ChatMessage[], opts: { vision: boolean; json: boolean; maxTokens: number }): Promise<CallOutcome> {
-  const baseUrl = String(conn.config.baseUrl ?? (conn.provider === 'GROQ' ? 'https://api.groq.com/openai/v1' : ''));
+async function callOpenAiCompatible(
+  conn: LoadedConnection,
+  messages: ChatMessage[],
+  opts: { vision: boolean; json: boolean; maxTokens: number },
+): Promise<CallOutcome> {
+  const baseUrl = String(
+    conn.config.baseUrl ?? (conn.provider === 'GROQ' ? 'https://api.groq.com/openai/v1' : ''),
+  );
   const model = String((opts.vision ? conn.config.visionModel : conn.config.textModel) ?? '');
-  if (!baseUrl || !model) throw new Error(`${conn.provider}: ${opts.vision ? 'vision' : 'text'} model not configured`);
+  if (!baseUrl || !model)
+    throw new Error(`${conn.provider}: ${opts.vision ? 'vision' : 'text'} model not configured`);
   const body = {
     model,
     temperature: 0.1,
@@ -55,24 +68,48 @@ async function callOpenAiCompatible(conn: LoadedConnection, messages: ChatMessag
       content:
         typeof m.content === 'string'
           ? m.content
-          : m.content.map((c) => (c.type === 'text' ? { type: 'text', text: c.text } : { type: 'image_url', image_url: { url: `data:${c.mime};base64,${c.base64}` } })),
+          : m.content.map((c) =>
+              c.type === 'text'
+                ? { type: 'text', text: c.text }
+                : { type: 'image_url', image_url: { url: `data:${c.mime};base64,${c.base64}` } },
+            ),
     })),
   };
   const res = await safeFetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     trusted: true,
     timeoutMs: 60_000,
-    headers: { 'Content-Type': 'application/json', ...(conn.secrets.apiKey ? { Authorization: `Bearer ${conn.secrets.apiKey}` } : {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(conn.secrets.apiKey ? { Authorization: `Bearer ${conn.secrets.apiKey}` } : {}),
+    },
     body: JSON.stringify(body),
   });
-  const json = (await res.json().catch(() => ({}))) as { choices?: Array<{ message?: { content?: string } }>; usage?: { prompt_tokens?: number; completion_tokens?: number }; error?: { message?: string } };
-  if (!res.ok) throw new Error(`${conn.provider} HTTP ${res.status}: ${json.error?.message ?? ''}`.slice(0, 500));
-  return { text: json.choices?.[0]?.message?.content ?? '', inputTokens: json.usage?.prompt_tokens ?? 0, outputTokens: json.usage?.completion_tokens ?? 0, model };
+  const json = (await res.json().catch(() => ({}))) as {
+    choices?: Array<{ message?: { content?: string } }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
+    error?: { message?: string };
+  };
+  if (!res.ok)
+    throw new Error(`${conn.provider} HTTP ${res.status}: ${json.error?.message ?? ''}`.slice(0, 500));
+  return {
+    text: json.choices?.[0]?.message?.content ?? '',
+    inputTokens: json.usage?.prompt_tokens ?? 0,
+    outputTokens: json.usage?.completion_tokens ?? 0,
+    model,
+  };
 }
 
-async function callAnthropic(conn: LoadedConnection, messages: ChatMessage[], opts: { vision: boolean; json: boolean; maxTokens: number }): Promise<CallOutcome> {
+async function callAnthropic(
+  conn: LoadedConnection,
+  messages: ChatMessage[],
+  opts: { vision: boolean; json: boolean; maxTokens: number },
+): Promise<CallOutcome> {
   const model = String((opts.vision ? conn.config.visionModel : conn.config.textModel) ?? 'claude-sonnet-5');
-  const system = messages.filter((m) => m.role === 'system').map((m) => (typeof m.content === 'string' ? m.content : '')).join('\n');
+  const system = messages
+    .filter((m) => m.role === 'system')
+    .map((m) => (typeof m.content === 'string' ? m.content : ''))
+    .join('\n');
   const body = {
     model,
     max_tokens: opts.maxTokens,
@@ -82,19 +119,42 @@ async function callAnthropic(conn: LoadedConnection, messages: ChatMessage[], op
       .filter((m) => m.role !== 'system')
       .map((m) => ({
         role: m.role,
-        content: typeof m.content === 'string' ? m.content : m.content.map((c) => (c.type === 'text' ? { type: 'text', text: c.text } : { type: 'image', source: { type: 'base64', media_type: c.mime, data: c.base64 } })),
+        content:
+          typeof m.content === 'string'
+            ? m.content
+            : m.content.map((c) =>
+                c.type === 'text'
+                  ? { type: 'text', text: c.text }
+                  : { type: 'image', source: { type: 'base64', media_type: c.mime, data: c.base64 } },
+              ),
       })),
   };
   const res = await safeFetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     trusted: true,
     timeoutMs: 60_000,
-    headers: { 'Content-Type': 'application/json', 'x-api-key': conn.secrets.apiKey ?? '', 'anthropic-version': '2023-06-01' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': conn.secrets.apiKey ?? '',
+      'anthropic-version': '2023-06-01',
+    },
     body: JSON.stringify(body),
   });
-  const json = (await res.json().catch(() => ({}))) as { content?: Array<{ type: string; text?: string }>; usage?: { input_tokens?: number; output_tokens?: number }; error?: { message?: string } };
+  const json = (await res.json().catch(() => ({}))) as {
+    content?: Array<{ type: string; text?: string }>;
+    usage?: { input_tokens?: number; output_tokens?: number };
+    error?: { message?: string };
+  };
   if (!res.ok) throw new Error(`ANTHROPIC HTTP ${res.status}: ${json.error?.message ?? ''}`.slice(0, 500));
-  return { text: (json.content ?? []).filter((c) => c.type === 'text').map((c) => c.text).join(''), inputTokens: json.usage?.input_tokens ?? 0, outputTokens: json.usage?.output_tokens ?? 0, model };
+  return {
+    text: (json.content ?? [])
+      .filter((c) => c.type === 'text')
+      .map((c) => c.text)
+      .join(''),
+    inputTokens: json.usage?.input_tokens ?? 0,
+    outputTokens: json.usage?.output_tokens ?? 0,
+    model,
+  };
 }
 
 async function resolveChain(tx: Tx, tenantId: string, vision: boolean): Promise<LoadedConnection[]> {
@@ -117,20 +177,42 @@ async function resolveChain(tx: Tx, tenantId: string, vision: boolean): Promise<
  * Runs a chat completion with automatic fallback.
  * Throws AiUnavailableError when no provider is configured — callers must degrade gracefully.
  */
-export async function aiChat(tenantId: string, task: AiTask, messages: ChatMessage[], opts: { vision?: boolean; json?: boolean; maxTokens?: number } = {}): Promise<AiResult> {
+export async function aiChat(
+  tenantId: string,
+  task: AiTask,
+  messages: ChatMessage[],
+  opts: { vision?: boolean; json?: boolean; maxTokens?: number } = {},
+): Promise<AiResult> {
   const vision = !!opts.vision;
   const chain = await withTenant({ tenantId }, (tx) => resolveChain(tx, tenantId, vision));
-  if (chain.length === 0) throw new AiUnavailableError(vision ? '비전 AI 제공자가 설정되지 않았습니다.' : '텍스트 AI 제공자가 설정되지 않았습니다.');
+  if (chain.length === 0)
+    throw new AiUnavailableError(
+      vision ? '비전 AI 제공자가 설정되지 않았습니다.' : '텍스트 AI 제공자가 설정되지 않았습니다.',
+    );
   const errors: string[] = [];
   for (let i = 0; i < chain.length; i++) {
     const conn = chain[i]!;
     const started = Date.now();
     try {
       const call = conn.provider === 'ANTHROPIC' ? callAnthropic : callOpenAiCompatible;
-      const out = await call(conn, messages, { vision, json: !!opts.json, maxTokens: opts.maxTokens ?? 1200 });
+      const out = await call(conn, messages, {
+        vision,
+        json: !!opts.json,
+        maxTokens: opts.maxTokens ?? 1200,
+      });
       await recordConnectionResult(tenantId, conn.id, true);
       await withTenant({ tenantId }, (tx) =>
-        tx.insert(aiUsage).values({ tenantId, provider: conn.provider, model: out.model, task, inputTokens: out.inputTokens, outputTokens: out.outputTokens, latencyMs: Date.now() - started, success: true, fallbackUsed: i > 0 }),
+        tx.insert(aiUsage).values({
+          tenantId,
+          provider: conn.provider,
+          model: out.model,
+          task,
+          inputTokens: out.inputTokens,
+          outputTokens: out.outputTokens,
+          latencyMs: Date.now() - started,
+          success: true,
+          fallbackUsed: i > 0,
+        }),
       );
       return { text: out.text, provider: conn.provider, model: out.model, fallbackUsed: i > 0 };
     } catch (e) {
@@ -138,7 +220,16 @@ export async function aiChat(tenantId: string, task: AiTask, messages: ChatMessa
       errors.push(`${conn.provider}: ${msg}`);
       await recordConnectionResult(tenantId, conn.id, false, msg);
       await withTenant({ tenantId }, (tx) =>
-        tx.insert(aiUsage).values({ tenantId, provider: conn.provider, model: String(conn.config.textModel ?? ''), task, latencyMs: Date.now() - started, success: false, fallbackUsed: i > 0, error: msg.slice(0, 500) }),
+        tx.insert(aiUsage).values({
+          tenantId,
+          provider: conn.provider,
+          model: String(conn.config.textModel ?? ''),
+          task,
+          latencyMs: Date.now() - started,
+          success: false,
+          fallbackUsed: i > 0,
+          error: msg.slice(0, 500),
+        }),
       );
     }
   }
@@ -147,7 +238,10 @@ export async function aiChat(tenantId: string, task: AiTask, messages: ChatMessa
 
 /** Extracts the first JSON object from a model response. */
 export function parseJsonLoose<T = unknown>(text: string): T | null {
-  const trimmed = text.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '');
+  const trimmed = text
+    .trim()
+    .replace(/^```(?:json)?/i, '')
+    .replace(/```$/, '');
   try {
     return JSON.parse(trimmed) as T;
   } catch {

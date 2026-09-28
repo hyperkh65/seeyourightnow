@@ -60,7 +60,9 @@ function s3(): S3Client {
       region: config.S3_REGION,
       endpoint: config.S3_ENDPOINT,
       forcePathStyle: config.S3_FORCE_PATH_STYLE,
-      credentials: config.S3_ACCESS_KEY ? { accessKeyId: config.S3_ACCESS_KEY, secretAccessKey: config.S3_SECRET_KEY ?? '' } : undefined,
+      credentials: config.S3_ACCESS_KEY
+        ? { accessKeyId: config.S3_ACCESS_KEY, secretAccessKey: config.S3_SECRET_KEY ?? '' }
+        : undefined,
     });
   }
   return s3Client;
@@ -70,7 +72,15 @@ const s3Driver: StorageDriver = {
   name: 's3',
   bucket: config.S3_BUCKET,
   async put(key, body, contentType) {
-    await s3().send(new PutObjectCommand({ Bucket: config.S3_BUCKET, Key: key, Body: body, ContentType: contentType, ServerSideEncryption: config.S3_ENDPOINT ? undefined : 'AES256' }));
+    await s3().send(
+      new PutObjectCommand({
+        Bucket: config.S3_BUCKET,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+        ServerSideEncryption: config.S3_ENDPOINT ? undefined : 'AES256',
+      }),
+    );
   },
   async get(key) {
     const r = await s3().send(new GetObjectCommand({ Bucket: config.S3_BUCKET, Key: key }));
@@ -79,7 +89,11 @@ const s3Driver: StorageDriver = {
   async signedUrl(_fileId, key, filename, ttl) {
     return getSignedUrl(
       s3(),
-      new GetObjectCommand({ Bucket: config.S3_BUCKET, Key: key, ResponseContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(filename)}` }),
+      new GetObjectCommand({
+        Bucket: config.S3_BUCKET,
+        Key: key,
+        ResponseContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+      }),
       { expiresIn: ttl },
     );
   },

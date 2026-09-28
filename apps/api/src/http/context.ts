@@ -1,8 +1,23 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import { audienceOf, hasPermission, STEP_UP_PERMISSIONS, type Audience, type FeatureModule, type Permission, type Role } from '@sos/core';
+import {
+  audienceOf,
+  hasPermission,
+  STEP_UP_PERMISSIONS,
+  type Audience,
+  type FeatureModule,
+  type Permission,
+  type Role,
+} from '@sos/core';
 import { config } from '../config.js';
 import { withTenant, type Tx } from '../db/client.js';
-import { featureDisabled, forbidden, mfaRequired, notFound, stepUpRequired, unauthorized } from '../lib/errors.js';
+import {
+  featureDisabled,
+  forbidden,
+  mfaRequired,
+  notFound,
+  stepUpRequired,
+  unauthorized,
+} from '../lib/errors.js';
 
 export interface TenantInfo {
   id: string;
@@ -88,7 +103,8 @@ export function can(req: FastifyRequest, perm: Permission): boolean {
 
 export function requireStepUp(req: FastifyRequest): void {
   const s = req.ctx.session;
-  if (!s?.stepUpAt || Date.now() - s.stepUpAt.getTime() > config.STEP_UP_MINUTES * 60_000) throw stepUpRequired();
+  if (!s?.stepUpAt || Date.now() - s.stepUpAt.getTime() > config.STEP_UP_MINUTES * 60_000)
+    throw stepUpRequired();
 }
 
 export function requireFeature(req: FastifyRequest, module: FeatureModule): void {

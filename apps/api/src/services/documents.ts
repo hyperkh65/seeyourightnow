@@ -18,16 +18,36 @@ import { render } from './templates/render.js';
  */
 
 export async function publishedTemplate(tx: Tx, tenantId: string, kind: string) {
-  const [tpl] = await tx.select().from(documentTemplates).where(and(eq(documentTemplates.tenantId, tenantId), eq(documentTemplates.kind, kind))).limit(1);
+  const [tpl] = await tx
+    .select()
+    .from(documentTemplates)
+    .where(and(eq(documentTemplates.tenantId, tenantId), eq(documentTemplates.kind, kind)))
+    .limit(1);
   if (!tpl?.publishedVersionId) throw badRequest(`${kind} 템플릿이 게시되지 않았습니다.`);
-  const [ver] = await tx.select().from(documentTemplateVersions).where(eq(documentTemplateVersions.id, tpl.publishedVersionId)).limit(1);
+  const [ver] = await tx
+    .select()
+    .from(documentTemplateVersions)
+    .where(eq(documentTemplateVersions.id, tpl.publishedVersionId))
+    .limit(1);
   if (!ver) throw badRequest('템플릿 버전을 찾을 수 없습니다.');
   return { template: tpl, version: ver };
 }
 
 export async function documentContext(tx: Tx, tenantId: string) {
-  const [brand, company] = await Promise.all([getPublished(tx, tenantId, 'brand'), getPublished(tx, tenantId, 'company')]);
-  const banks = await tx.select().from(bankAccounts).where(and(eq(bankAccounts.tenantId, tenantId), eq(bankAccounts.active, true), eq(bankAccounts.showOnDocuments, true)));
+  const [brand, company] = await Promise.all([
+    getPublished(tx, tenantId, 'brand'),
+    getPublished(tx, tenantId, 'company'),
+  ]);
+  const banks = await tx
+    .select()
+    .from(bankAccounts)
+    .where(
+      and(
+        eq(bankAccounts.tenantId, tenantId),
+        eq(bankAccounts.active, true),
+        eq(bankAccounts.showOnDocuments, true),
+      ),
+    );
   let logoDataUri: string | null = null;
   const logoId = brand.pdfLogoFileId ?? brand.logoFileId;
   if (logoId) {
@@ -41,7 +61,14 @@ export async function documentContext(tx: Tx, tenantId: string) {
   return {
     brand: { ...brand, logoDataUri },
     company,
-    banks: banks.map((b) => ({ bankName: b.bankName, accountNumber: b.accountNumber, accountHolder: b.accountHolder, currency: b.currency, swift: b.swift, bankAddress: b.bankAddress })),
+    banks: banks.map((b) => ({
+      bankName: b.bankName,
+      accountNumber: b.accountNumber,
+      accountHolder: b.accountHolder,
+      currency: b.currency,
+      swift: b.swift,
+      bankAddress: b.bankAddress,
+    })),
   };
 }
 
@@ -52,18 +79,29 @@ export function wrapHtml(body: string, css: string, data: unknown): string {
 let browserPromise: Promise<Browser> | null = null;
 function chromiumPath(): string | undefined {
   if (config.CHROMIUM_PATH) return config.CHROMIUM_PATH;
-  for (const p of ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome']) if (existsSync(p)) return p;
+  for (const p of [
+    '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/google-chrome',
+  ])
+    if (existsSync(p)) return p;
   return undefined;
 }
 
 async function renderWithChromium(html: string): Promise<Buffer> {
-  browserPromise ??= chromium.launch({ executablePath: chromiumPath(), args: ['--no-sandbox', '--disable-dev-shm-usage'] });
+  browserPromise ??= chromium.launch({
+    executablePath: chromiumPath(),
+    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+  });
   const browser = await browserPromise;
   const ctx = await browser.newContext({ javaScriptEnabled: false });
   try {
     const page = await ctx.newPage();
     // Block all network access: templates must be self-contained (images inlined as data URIs).
-    await page.route('**/*', (route) => (route.request().url().startsWith('data:') ? route.continue() : route.abort()));
+    await page.route('**/*', (route) =>
+      route.request().url().startsWith('data:') ? route.continue() : route.abort(),
+    );
     await page.setContent(html, { waitUntil: 'load' });
     return Buffer.from(await page.pdf({ format: 'A4', printBackground: true, preferCSSPageSize: true }));
   } finally {
@@ -76,7 +114,12 @@ async function renderWithGotenberg(html: string): Promise<Buffer> {
   form.append('files', new Blob([html], { type: 'text/html' }), 'index.html');
   form.append('printBackground', 'true');
   form.append('preferCssPageSize', 'true');
-  const res = await safeFetch(`${config.GOTENBERG_URL}/forms/chromium/convert/html`, { method: 'POST', body: form, trusted: true, timeoutMs: 60_000 });
+  const res = await safeFetch(`${config.GOTENBERG_URL}/forms/chromium/convert/html`, {
+    method: 'POST',
+    body: form,
+    trusted: true,
+    timeoutMs: 60_000,
+  });
   if (!res.ok) throw new Error(`Gotenberg HTTP ${res.status}`);
   return Buffer.from(await res.arrayBuffer());
 }
@@ -112,7 +155,13 @@ export async function issueDocument(tx: Tx, input: IssueDocumentInput) {
   const data = { ...ctx, ...input.data };
   const html = wrapHtml(tplVersion.html, tplVersion.css, data);
   const { pdf, renderer } = await htmlToPdf(html);
-  const file = await storeFile(tx, { tenantId: input.tenantId, buffer: pdf, originalName: `${input.number}${input.version ? `-v${input.version}` : ''}.pdf`, purpose: 'GENERATED_PDF', uploadedBy: input.userId });
+  const file = await storeFile(tx, {
+    tenantId: input.tenantId,
+    buffer: pdf,
+    originalName: `${input.number}${input.version ? `-v${input.version}` : ''}.pdf`,
+    purpose: 'GENERATED_PDF',
+    uploadedBy: input.userId,
+  });
   const version = input.version ?? (await nextDocVersion(tx, input.tenantId, input.kind, input.number));
   const [doc] = await tx
     .insert(documents)
@@ -137,18 +186,31 @@ export async function issueDocument(tx: Tx, input: IssueDocumentInput) {
 }
 
 async function nextDocVersion(tx: Tx, tenantId: string, kind: string, number: string): Promise<number> {
-  const [r] = await tx.select({ v: sql<number>`coalesce(max(${documents.version}),0)::int` }).from(documents).where(and(eq(documents.tenantId, tenantId), eq(documents.kind, kind), eq(documents.number, number)));
+  const [r] = await tx
+    .select({ v: sql<number>`coalesce(max(${documents.version}),0)::int` })
+    .from(documents)
+    .where(and(eq(documents.tenantId, tenantId), eq(documents.kind, kind), eq(documents.number, number)));
   return (r?.v ?? 0) + 1;
 }
 
 /** HTML preview (no PDF, no storage) for template editing. */
-export async function previewHtml(tx: Tx, tenantId: string, html: string, css: string, sample: Record<string, unknown>): Promise<string> {
+export async function previewHtml(
+  tx: Tx,
+  tenantId: string,
+  html: string,
+  css: string,
+  sample: Record<string, unknown>,
+): Promise<string> {
   const ctx = await documentContext(tx, tenantId);
   return wrapHtml(html, css, { ...ctx, ...sample });
 }
 
 export async function latestDocuments(tx: Tx, projectId: string) {
-  return tx.select().from(documents).where(eq(documents.projectId, projectId)).orderBy(desc(documents.createdAt));
+  return tx
+    .select()
+    .from(documents)
+    .where(eq(documents.projectId, projectId))
+    .orderBy(desc(documents.createdAt));
 }
 
 export async function closePdfBrowser(): Promise<void> {

@@ -5,6 +5,7 @@ import { audienceOf, type Role } from '@sos/core';
 import { config } from '../config.js';
 import { systemDb } from '../db/client.js';
 import { loginAttempts, sessions, userRoles, users } from '../db/schema/index.js';
+import { cacheGet, cacheSet } from '../lib/cache.js';
 import { decrypt, encrypt, randomToken, sha256Hex } from '../lib/crypto.js';
 import type { AuthUser, SessionInfo } from '../http/context.js';
 
@@ -26,8 +27,10 @@ export function passwordProblems(password: string, email?: string): string[] {
   const p: string[] = [];
   if (password.length < 10) p.push('비밀번호는 10자 이상이어야 합니다.');
   if (password.length > 200) p.push('비밀번호가 너무 깁니다.');
-  if (email && password.toLowerCase().includes(email.split('@')[0]!.toLowerCase())) p.push('이메일과 비슷한 비밀번호는 사용할 수 없습니다.');
-  if (/^(.)\1+$/.test(password) || /^(0123456789|1234567890|password|qwerty)/i.test(password)) p.push('너무 단순한 비밀번호입니다.');
+  if (email && password.toLowerCase().includes(email.split('@')[0]!.toLowerCase()))
+    p.push('이메일과 비슷한 비밀번호는 사용할 수 없습니다.');
+  if (/^(.)\1+$/.test(password) || /^(0123456789|1234567890|password|qwerty)/i.test(password))
+    p.push('너무 단순한 비밀번호입니다.');
   return p;
 }
 
@@ -39,25 +42,40 @@ export function newTotpSecret(): string {
 export function totpUri(email: string, issuer: string, secret: string): string {
   return authenticator.keyuri(email, issuer, secret);
 }
-export function verifyTotp(secretEnc: string | null, code: string): boolean {
+/**
+ * Verifies a TOTP code. With `userId`, an accepted code is remembered for its
+ * validity window so the same code cannot be replayed (RFC 6238 §5.2).
+ */
+export async function verifyTotp(secretEnc: string | null, code: string, userId?: string): Promise<boolean> {
   if (!secretEnc) return false;
+  const token = code.replace(/\s/g, '');
+  let ok = false;
   try {
-    return authenticator.verify({ token: code.replace(/\s/g, ''), secret: decrypt(secretEnc) });
+    ok = authenticator.verify({ token, secret: decrypt(secretEnc) });
   } catch {
     return false;
   }
+  if (!ok || !userId) return ok;
+  const key = `totp-used:${userId}:${token}`;
+  if (await cacheGet<boolean>(key)) return false;
+  await cacheSet(key, true, 120);
+  return true;
 }
 export const encryptTotp = (secret: string) => encrypt(secret);
 
 export function newRecoveryCodes(): { codes: string[]; hashes: string[] } {
-  const codes = Array.from({ length: 8 }, () => randomToken(6).replace(/[-_]/g, 'x').slice(0, 10).toUpperCase());
+  const codes = Array.from({ length: 8 }, () =>
+    randomToken(6).replace(/[-_]/g, 'x').slice(0, 10).toUpperCase(),
+  );
   return { codes, hashes: codes.map((c) => sha256Hex(c)) };
 }
 
 export async function loadAuthUser(userId: string): Promise<AuthUser | null> {
   const [u] = await systemDb.select().from(users).where(eq(users.id, userId)).limit(1);
   if (!u || u.status !== 'ACTIVE') return null;
-  const roles = (await systemDb.select({ role: userRoles.role }).from(userRoles).where(eq(userRoles.userId, u.id))).map((r) => r.role as Role);
+  const roles = (
+    await systemDb.select({ role: userRoles.role }).from(userRoles).where(eq(userRoles.userId, u.id))
+  ).map((r) => r.role as Role);
   if (u.isSuperAdmin && !roles.includes('SUPER_ADMIN')) roles.push('SUPER_ADMIN');
   return {
     id: u.id,
@@ -79,7 +97,15 @@ export interface CreatedSession {
   sessionId: string;
 }
 
-export async function createSession(p: { userId: string; tenantId: string | null; mfaVerified: boolean; ip: string; userAgent: string; impersonatorId?: string | null; stepUp?: boolean }): Promise<CreatedSession> {
+export async function createSession(p: {
+  userId: string;
+  tenantId: string | null;
+  mfaVerified: boolean;
+  ip: string;
+  userAgent: string;
+  impersonatorId?: string | null;
+  stepUp?: boolean;
+}): Promise<CreatedSession> {
   const token = randomToken(32);
   const csrfToken = randomToken(24);
   const now = Date.now();
@@ -104,8 +130,26 @@ export async function createSession(p: { userId: string; tenantId: string | null
 }
 
 function deviceLabel(ua: string): string {
-  const os = /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : /Mac OS X/.test(ua) ? 'macOS' : /Windows/.test(ua) ? 'Windows' : /Linux/.test(ua) ? 'Linux' : '기타';
-  const br = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : /Firefox\//.test(ua) ? 'Firefox' : '브라우저';
+  const os = /iPhone|iPad/.test(ua)
+    ? 'iOS'
+    : /Android/.test(ua)
+      ? 'Android'
+      : /Mac OS X/.test(ua)
+        ? 'macOS'
+        : /Windows/.test(ua)
+          ? 'Windows'
+          : /Linux/.test(ua)
+            ? 'Linux'
+            : '기타';
+  const br = /Edg\//.test(ua)
+    ? 'Edge'
+    : /Chrome\//.test(ua)
+      ? 'Chrome'
+      : /Safari\//.test(ua)
+        ? 'Safari'
+        : /Firefox\//.test(ua)
+          ? 'Firefox'
+          : '브라우저';
   return `${br} · ${os}`;
 }
 
@@ -127,7 +171,17 @@ export async function validateSession(token: string, ip: string): Promise<Valida
   const [s] = await systemDb
     .select()
     .from(sessions)
-    .where(and(or(eq(sessions.tokenHash, h), and(eq(sessions.previousTokenHash, h), gt(sessions.rotatedAt, new Date(now.getTime() - 60_000)))), isNull(sessions.revokedAt), gt(sessions.expiresAt, now), gt(sessions.idleExpiresAt, now)))
+    .where(
+      and(
+        or(
+          eq(sessions.tokenHash, h),
+          and(eq(sessions.previousTokenHash, h), gt(sessions.rotatedAt, new Date(now.getTime() - 60_000))),
+        ),
+        isNull(sessions.revokedAt),
+        gt(sessions.expiresAt, now),
+        gt(sessions.idleExpiresAt, now),
+      ),
+    )
     .limit(1);
   if (!s) return null;
   let rotatedToken: string | undefined;
@@ -147,7 +201,13 @@ export async function validateSession(token: string, ip: string): Promise<Valida
     await systemDb.update(sessions).set(patch).where(eq(sessions.id, s.id));
   }
   return {
-    session: { id: s.id, csrfToken: s.csrfToken, mfaVerified: s.mfaVerified, stepUpAt: s.stepUpAt, impersonatorId: s.impersonatorId },
+    session: {
+      id: s.id,
+      csrfToken: s.csrfToken,
+      mfaVerified: s.mfaVerified,
+      stepUpAt: s.stepUpAt,
+      impersonatorId: s.impersonatorId,
+    },
     userId: s.userId,
     tenantId: s.tenantId,
     ...(rotatedToken ? { rotatedToken } : {}),
@@ -162,10 +222,22 @@ export async function revokeAllSessions(userId: string, exceptSessionId?: string
   await systemDb
     .update(sessions)
     .set({ revokedAt: new Date() })
-    .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt), exceptSessionId ? sql`${sessions.id} <> ${exceptSessionId}` : sql`true`));
+    .where(
+      and(
+        eq(sessions.userId, userId),
+        isNull(sessions.revokedAt),
+        exceptSessionId ? sql`${sessions.id} <> ${exceptSessionId}` : sql`true`,
+      ),
+    );
 }
 
-export async function recordLoginAttempt(tenantId: string | null, email: string, ip: string, success: boolean, reason = ''): Promise<void> {
+export async function recordLoginAttempt(
+  tenantId: string | null,
+  email: string,
+  ip: string,
+  success: boolean,
+  reason = '',
+): Promise<void> {
   await systemDb.insert(loginAttempts).values({ tenantId, email: email.toLowerCase(), ip, success, reason });
 }
 
@@ -174,6 +246,12 @@ export async function ipLoginFailures(ip: string): Promise<number> {
   const [r] = await systemDb
     .select({ n: sql<number>`count(*)::int` })
     .from(loginAttempts)
-    .where(and(eq(loginAttempts.ip, ip), eq(loginAttempts.success, false), gt(loginAttempts.createdAt, new Date(Date.now() - 15 * 60_000))));
+    .where(
+      and(
+        eq(loginAttempts.ip, ip),
+        eq(loginAttempts.success, false),
+        gt(loginAttempts.createdAt, new Date(Date.now() - 15 * 60_000)),
+      ),
+    );
   return r?.n ?? 0;
 }

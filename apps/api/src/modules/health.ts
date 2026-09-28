@@ -41,18 +41,37 @@ export async function systemHealth() {
     }),
   ]);
   const queueRow = queue.value as { dead: number; pending: number; oldest: string | null } | null;
-  const lagSec = queueRow?.oldest ? Math.max(0, (Date.now() - new Date(queueRow.oldest).getTime()) / 1000) : 0;
+  const lagSec = queueRow?.oldest
+    ? Math.max(0, (Date.now() - new Date(queueRow.oldest).getTime()) / 1000)
+    : 0;
   const components = {
     database: { status: (db.error ? 'DOWN' : 'OK') as Status, latencyMs: db.ms, error: db.error ?? null },
-    cache: { status: (redis.value === 'DISABLED' ? 'DISABLED' : redis.value === 'OK' ? 'OK' : 'DEGRADED') as Status, latencyMs: redis.ms, note: redis.value === 'OK' ? null : '메모리 캐시로 동작 중' },
+    cache: {
+      status: (redis.value === 'DISABLED' ? 'DISABLED' : redis.value === 'OK' ? 'OK' : 'DEGRADED') as Status,
+      latencyMs: redis.ms,
+      note: redis.value === 'OK' ? null : '메모리 캐시로 동작 중',
+    },
     storage: { status: (store.value ?? 'DOWN') as Status, driver: storage.name, latencyMs: store.ms },
     aiWorker: { status: (ai.value ?? 'DOWN') as Status, latencyMs: ai.ms, error: ai.error ?? null },
-    pdfRenderer: { status: (pdf.value ?? 'DOWN') as Status, renderer: config.GOTENBERG_URL ? 'GOTENBERG' : 'CHROMIUM' },
-    queue: { status: (queue.error ? 'DOWN' : lagSec > 300 ? 'DEGRADED' : 'OK') as Status, pending: queueRow?.pending ?? null, deadLetter: queueRow?.dead ?? null, lagSeconds: Math.round(lagSec) },
+    pdfRenderer: {
+      status: (pdf.value ?? 'DOWN') as Status,
+      renderer: config.GOTENBERG_URL ? 'GOTENBERG' : 'CHROMIUM',
+    },
+    queue: {
+      status: (queue.error ? 'DOWN' : lagSec > 300 ? 'DEGRADED' : 'OK') as Status,
+      pending: queueRow?.pending ?? null,
+      deadLetter: queueRow?.dead ?? null,
+      lagSeconds: Math.round(lagSec),
+    },
     malwareScan: { status: (config.CLAMAV_HOST ? 'OK' : 'NOT_CONFIGURED') as Status },
     email: { status: (config.SMTP_HOST ? 'OK' : 'NOT_CONFIGURED') as Status },
   };
-  const overall: Status = components.database.status !== 'OK' ? 'DOWN' : Object.values(components).some((c) => c.status === 'DOWN' || c.status === 'DEGRADED') ? 'DEGRADED' : 'OK';
+  const overall: Status =
+    components.database.status !== 'OK'
+      ? 'DOWN'
+      : Object.values(components).some((c) => c.status === 'DOWN' || c.status === 'DEGRADED')
+        ? 'DEGRADED'
+        : 'OK';
   return { status: overall, time: new Date().toISOString(), components };
 }
 
@@ -63,6 +82,10 @@ export async function healthRoutes(app: App) {
   app.get('/health', async (_req, reply) => {
     const h = await systemHealth();
     reply.status(h.status === 'DOWN' ? 503 : 200);
-    return { status: h.status, time: h.time, components: Object.fromEntries(Object.entries(h.components).map(([k, v]) => [k, v.status])) };
+    return {
+      status: h.status,
+      time: h.time,
+      components: Object.fromEntries(Object.entries(h.components).map(([k, v]) => [k, v.status])),
+    };
   });
 }

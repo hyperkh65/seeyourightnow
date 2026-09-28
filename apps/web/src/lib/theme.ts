@@ -2,7 +2,13 @@ import type { CSSProperties } from 'react';
 import type { SiteConfig } from './site';
 import { hexToRgbChannels, readableOn, softTint } from './utils';
 
-const RADIUS: Record<string, string> = { none: '0px', sm: '0.375rem', md: '0.5rem', lg: '0.75rem', full: '9999px' };
+const RADIUS: Record<string, string> = {
+  none: '0px',
+  sm: '0.375rem',
+  md: '0.5rem',
+  lg: '0.75rem',
+  full: '9999px',
+};
 
 /** CSS variables for the tenant's white-label theme (applied on <html>). */
 export function themeStyle(site: SiteConfig | null): CSSProperties {
@@ -14,7 +20,14 @@ export function themeStyle(site: SiteConfig | null): CSSProperties {
     ['--brand-soft' as string]: softTint(primary),
     ['--accent' as string]: hexToRgbChannels(b?.accentColor ?? '#10B981'),
     ['--radius' as string]: RADIUS[b?.buttonRadius ?? 'lg'] ?? '0.75rem',
-    ['--font-sans' as string]: b?.fontFamily === 'Inter' ? 'Inter' : b?.fontFamily === 'Noto Sans KR' ? "'Noto Sans KR'" : b?.fontFamily === 'System' ? 'system-ui' : "'Pretendard Variable', Pretendard",
+    ['--font-sans' as string]:
+      b?.fontFamily === 'Inter'
+        ? 'Inter'
+        : b?.fontFamily === 'Noto Sans KR'
+          ? "'Noto Sans KR'"
+          : b?.fontFamily === 'System'
+            ? 'system-ui'
+            : "'Pretendard Variable', Pretendard",
   };
 }
 

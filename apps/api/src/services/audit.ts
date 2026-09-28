@@ -18,7 +18,11 @@ export function scrub(value: unknown): unknown {
   if (value && typeof value === 'object' && !(value instanceof Date)) {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      if (SENSITIVE_KEYS.test(k)) out[k] = v === null || v === undefined || v === '' ? v : '[REDACTED]';
+      if (SENSITIVE_KEYS.test(k))
+        out[k] =
+          v === null || v === undefined || v === '' || (typeof v === 'string' && /^\*{4}[^*]{1,6}$/.test(v))
+            ? v
+            : '[REDACTED]';
       else out[k] = scrub(v);
     }
     return out;
@@ -27,7 +31,12 @@ export function scrub(value: unknown): unknown {
 }
 
 /** Writes an audit row inside the caller's tenant transaction (atomic with the change). */
-export async function audit(tx: Tx, req: FastifyRequest | null, e: AuditEntry, tenantIdOverride?: string | null): Promise<void> {
+export async function audit(
+  tx: Tx,
+  req: FastifyRequest | null,
+  e: AuditEntry,
+  tenantIdOverride?: string | null,
+): Promise<void> {
   await tx.insert(auditLogs).values({
     tenantId: tenantIdOverride !== undefined ? tenantIdOverride : (req?.ctx.tenant?.id ?? null),
     actorId: req?.ctx.user?.id ?? null,
@@ -45,7 +54,10 @@ export async function audit(tx: Tx, req: FastifyRequest | null, e: AuditEntry, t
 }
 
 /** Platform-level audit (super admin actions, cross-tenant operations). */
-export async function auditSystem(req: FastifyRequest | null, e: AuditEntry & { tenantId?: string | null }): Promise<void> {
+export async function auditSystem(
+  req: FastifyRequest | null,
+  e: AuditEntry & { tenantId?: string | null },
+): Promise<void> {
   await systemDb.insert(auditLogs).values({
     tenantId: e.tenantId ?? null,
     actorId: req?.ctx.user?.id ?? null,

@@ -15,7 +15,8 @@ const toDeg = (r: number) => (r * 180) / Math.PI;
 export function haversineKm(a: LatLon, b: LatLon): number {
   const dLat = toRad(b.lat - a.lat);
   const dLon = toRad(b.lon - a.lon);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) ** 2;
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) ** 2;
   return 2 * R_KM * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
@@ -31,7 +32,11 @@ export function greatCirclePoints(a: LatLon, b: LatLon, segments = 32): LatLon[]
   const λ1 = toRad(a.lon);
   const φ2 = toRad(b.lat);
   const λ2 = toRad(b.lon);
-  const d = 2 * Math.asin(Math.sqrt(Math.sin((φ2 - φ1) / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin((λ2 - λ1) / 2) ** 2));
+  const d =
+    2 *
+    Math.asin(
+      Math.sqrt(Math.sin((φ2 - φ1) / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin((λ2 - λ1) / 2) ** 2),
+    );
   if (d === 0) return [a, b];
   const pts: LatLon[] = [];
   for (let i = 0; i <= segments; i++) {
@@ -50,14 +55,23 @@ export function greatCirclePoints(a: LatLon, b: LatLon, segments = 32): LatLon[]
  * AIS-based ETA: remaining great-circle distance / speed over ground.
  * Returns null when the vessel is effectively stationary or data is missing.
  */
-export function aisEta(position: LatLon, speedKnots: number | null | undefined, destination: LatLon, at: Date): Date | null {
+export function aisEta(
+  position: LatLon,
+  speedKnots: number | null | undefined,
+  destination: LatLon,
+  at: Date,
+): Date | null {
   if (!speedKnots || speedKnots < 3) return null;
   const km = haversineKm(position, destination) * 1.15; // routing factor: sea lanes are longer than great circle
   const hours = km / KM_PER_NM / speedKnots;
   return new Date(at.getTime() + hours * 3_600_000);
 }
 
-export function isAisStale(timestamp: Date | string | null | undefined, now = new Date(), maxHours = 6): boolean {
+export function isAisStale(
+  timestamp: Date | string | null | undefined,
+  now = new Date(),
+  maxHours = 6,
+): boolean {
   if (!timestamp) return true;
   return now.getTime() - new Date(timestamp).getTime() > maxHours * 3_600_000;
 }

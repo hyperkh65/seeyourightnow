@@ -1,4 +1,15 @@
-import { bigint, boolean, index, integer, jsonb, pgTable, real, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import {
+  bigint,
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  real,
+  text,
+  uniqueIndex,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import { createdAt, id, tenantId, ts, updatedAt } from './_common.js';
 
 // ─────────────────────────── Files & documents ───────────────────────────
@@ -49,7 +60,10 @@ export const documentTemplateVersions = pgTable(
     status: text('status').notNull(), // DRAFT | PUBLISHED | ARCHIVED
     html: text('html').notNull(),
     css: text('css').notNull().default(''),
-    defaultClauses: jsonb('default_clauses').$type<Array<{ key: string; title: string; body: string }>>().notNull().default([]),
+    defaultClauses: jsonb('default_clauses')
+      .$type<Array<{ key: string; title: string; body: string }>>()
+      .notNull()
+      .default([]),
     requiresLegalReview: boolean('requires_legal_review').notNull().default(false),
     createdBy: uuid('created_by'),
     publishedAt: ts('published_at'),
@@ -79,7 +93,10 @@ export const documents = pgTable(
     createdBy: uuid('created_by'),
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex('documents_uq').on(t.tenantId, t.kind, t.number, t.version), index('documents_project_idx').on(t.tenantId, t.projectId)],
+  (t) => [
+    uniqueIndex('documents_uq').on(t.tenantId, t.kind, t.number, t.version),
+    index('documents_project_idx').on(t.tenantId, t.projectId),
+  ],
 );
 
 // ─────────────────────────── Legal policies ───────────────────────────
@@ -231,7 +248,10 @@ export const emails = pgTable(
     openedAt: ts('opened_at'),
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex('emails_dedupe_uq').on(t.tenantId, t.dedupeKey), index('emails_project_idx').on(t.tenantId, t.projectId)],
+  (t) => [
+    uniqueIndex('emails_dedupe_uq').on(t.tenantId, t.dedupeKey),
+    index('emails_project_idx').on(t.tenantId, t.projectId),
+  ],
 );
 
 export const notifications = pgTable(
@@ -251,7 +271,10 @@ export const notifications = pgTable(
     readAt: ts('read_at'),
     createdAt: createdAt(),
   },
-  (t) => [index('notifications_user_idx').on(t.tenantId, t.userId, t.readAt), uniqueIndex('notifications_dedupe_uq').on(t.tenantId, t.userId, t.dedupeKey)],
+  (t) => [
+    index('notifications_user_idx').on(t.tenantId, t.userId, t.readAt),
+    uniqueIndex('notifications_dedupe_uq').on(t.tenantId, t.userId, t.dedupeKey),
+  ],
 );
 
 export const notificationPreferences = pgTable(
@@ -290,7 +313,10 @@ export const jobs = pgTable(
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [index('jobs_poll_idx').on(t.status, t.runAt, t.priority), uniqueIndex('jobs_dedupe_uq').on(t.tenantId, t.dedupeKey)],
+  (t) => [
+    index('jobs_poll_idx').on(t.status, t.runAt, t.priority),
+    uniqueIndex('jobs_dedupe_uq').on(t.tenantId, t.dedupeKey),
+  ],
 );
 
 export const idempotencyKeys = pgTable(
@@ -324,7 +350,10 @@ export const workflowInstances = pgTable(
     status: text('status').notNull().default('RUNNING'), // RUNNING | WAITING_HUMAN | COMPLETED | FAILED | CANCELLED
     waitingFor: text('waiting_for'),
     context: jsonb('context').$type<Record<string, unknown>>().notNull().default({}),
-    history: jsonb('history').$type<Array<{ step: string; status: string; at: string; by?: string | null; note?: string }>>().notNull().default([]),
+    history: jsonb('history')
+      .$type<Array<{ step: string; status: string; at: string; by?: string | null; note?: string }>>()
+      .notNull()
+      .default([]),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -350,7 +379,10 @@ export const auditLogs = pgTable(
     requestId: text('request_id').notNull().default(''),
     createdAt: createdAt(),
   },
-  (t) => [index('audit_logs_tenant_idx').on(t.tenantId, t.createdAt), index('audit_logs_entity_idx').on(t.tenantId, t.entityType, t.entityId)],
+  (t) => [
+    index('audit_logs_tenant_idx').on(t.tenantId, t.createdAt),
+    index('audit_logs_entity_idx').on(t.tenantId, t.entityType, t.entityId),
+  ],
 );
 
 // ─────────────────────────── AI accounting & learning ───────────────────────────

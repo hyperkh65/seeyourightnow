@@ -16,7 +16,12 @@ const COS = (() => {
 })();
 
 export async function phash(buffer: Buffer): Promise<string> {
-  const { data } = await sharp(buffer, { failOn: 'none' }).rotate().resize(N, N, { fit: 'fill' }).grayscale().raw().toBuffer({ resolveWithObject: true });
+  const { data } = await sharp(buffer, { failOn: 'none' })
+    .rotate()
+    .resize(N, N, { fit: 'fill' })
+    .grayscale()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
   const px: number[][] = [];
   for (let y = 0; y < N; y++) {
     px[y] = [];
@@ -52,5 +57,9 @@ export async function imageMeta(buffer: Buffer): Promise<{ width: number | null;
 
 /** Downscaled JPEG for sending to vision models (keeps tokens and latency low). */
 export async function visionThumbnail(buffer: Buffer, max = 1024): Promise<Buffer> {
-  return sharp(buffer, { failOn: 'none' }).rotate().resize(max, max, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 82 }).toBuffer();
+  return sharp(buffer, { failOn: 'none' })
+    .rotate()
+    .resize(max, max, { fit: 'inside', withoutEnlargement: true })
+    .jpeg({ quality: 82 })
+    .toBuffer();
 }

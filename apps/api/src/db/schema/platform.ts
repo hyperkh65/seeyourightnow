@@ -37,7 +37,10 @@ export const subscriptions = pgTable(
     tenantId: tenantId(),
     planId: uuid('plan_id').notNull(),
     status: text('status').notNull().default('ACTIVE'),
-    limitOverrides: jsonb('limit_overrides').$type<Record<string, { value: number; hard: boolean }>>().notNull().default({}),
+    limitOverrides: jsonb('limit_overrides')
+      .$type<Record<string, { value: number; hard: boolean }>>()
+      .notNull()
+      .default({}),
     featureOverrides: jsonb('feature_overrides').$type<Record<string, boolean>>().notNull().default({}),
     currentPeriodStart: ts('current_period_start').notNull().defaultNow(),
     currentPeriodEnd: ts('current_period_end'),
@@ -162,8 +165,12 @@ export const users = pgTable(
     updatedAt: updatedAt(),
   },
   (t) => [
-    uniqueIndex('users_tenant_email_uq').on(t.tenantId, t.email).where(sql`${t.tenantId} is not null`),
-    uniqueIndex('users_platform_email_uq').on(t.email).where(sql`${t.tenantId} is null`),
+    uniqueIndex('users_tenant_email_uq')
+      .on(t.tenantId, t.email)
+      .where(sql`${t.tenantId} is not null`),
+    uniqueIndex('users_platform_email_uq')
+      .on(t.email)
+      .where(sql`${t.tenantId} is null`),
   ],
 );
 

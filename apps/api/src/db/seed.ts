@@ -1,7 +1,16 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import type { Role } from '@sos/core';
 import { closeDb, systemDb } from './client.js';
-import { hsCodes, plans, ports, regulations, regulationVersions, tenants, userRoles, users } from './schema/index.js';
+import {
+  hsCodes,
+  plans,
+  ports,
+  regulations,
+  regulationVersions,
+  tenants,
+  userRoles,
+  users,
+} from './schema/index.js';
 import { HS_SAMPLES, PLANS, PORTS, REGULATIONS } from './reference-data.js';
 import { hashPassword } from '../services/auth.js';
 import { createTenant } from '../services/tenant-bootstrap.js';
@@ -19,15 +28,31 @@ const PASSWORD = process.env.SEED_PASSWORD ?? 'Demo-Pass-2026!';
 
 export async function seedReference(): Promise<void> {
   for (const p of PLANS) {
-    await systemDb.insert(plans).values(p).onConflictDoUpdate({ target: plans.code, set: { features: p.features, limits: p.limits, name: p.name, description: p.description } });
+    await systemDb
+      .insert(plans)
+      .values(p)
+      .onConflictDoUpdate({
+        target: plans.code,
+        set: { features: p.features, limits: p.limits, name: p.name, description: p.description },
+      });
   }
   for (const p of PORTS) {
-    await systemDb.insert(ports).values({ ...p, geofenceKm: p.geofenceKm ?? 15, kind: p.kind ?? 'SEAPORT' }).onConflictDoNothing();
+    await systemDb
+      .insert(ports)
+      .values({ ...p, geofenceKm: p.geofenceKm ?? 15, kind: p.kind ?? 'SEAPORT' })
+      .onConflictDoNothing();
   }
   for (const r of REGULATIONS) {
-    const [existing] = await systemDb.select().from(regulations).where(and(eq(regulations.code, r.code), isNull(regulations.tenantId))).limit(1);
+    const [existing] = await systemDb
+      .select()
+      .from(regulations)
+      .where(and(eq(regulations.code, r.code), isNull(regulations.tenantId)))
+      .limit(1);
     if (existing) continue;
-    const [reg] = await systemDb.insert(regulations).values({ tenantId: null, code: r.code, name: r.name, authority: r.authority, category: r.category }).returning({ id: regulations.id });
+    const [reg] = await systemDb
+      .insert(regulations)
+      .values({ tenantId: null, code: r.code, name: r.name, authority: r.authority, category: r.category })
+      .returning({ id: regulations.id });
     const [ver] = await systemDb
       .insert(regulationVersions)
       .values({
@@ -51,33 +76,91 @@ export async function seedReference(): Promise<void> {
     await systemDb.update(regulations).set({ currentVersionId: ver!.id }).where(eq(regulations.id, reg!.id));
   }
   for (const h of HS_SAMPLES) {
-    const [exists] = await systemDb.select({ id: hsCodes.id }).from(hsCodes).where(and(eq(hsCodes.code, h.code), isNull(hsCodes.tenantId))).limit(1);
+    const [exists] = await systemDb
+      .select({ id: hsCodes.id })
+      .from(hsCodes)
+      .where(and(eq(hsCodes.code, h.code), isNull(hsCodes.tenantId)))
+      .limit(1);
     if (exists) continue;
-    await systemDb.insert(hsCodes).values({ tenantId: null, code: h.code, level: 6, descriptionKo: h.ko, descriptionEn: h.en, keywords: h.keywords, source: 'HS_NOMENCLATURE_SUMMARY', verification: 'UNVERIFIED' });
+    await systemDb.insert(hsCodes).values({
+      tenantId: null,
+      code: h.code,
+      level: 6,
+      descriptionKo: h.ko,
+      descriptionEn: h.en,
+      keywords: h.keywords,
+      source: 'HS_NOMENCLATURE_SUMMARY',
+      verification: 'UNVERIFIED',
+    });
   }
 }
 
 async function ensureSuperAdmin(): Promise<void> {
   const email = (process.env.SEED_SUPERADMIN_EMAIL ?? 'superadmin@platform.local').toLowerCase();
-  const [u] = await systemDb.select().from(users).where(and(isNull(users.tenantId), eq(users.email, email))).limit(1);
+  const [u] = await systemDb
+    .select()
+    .from(users)
+    .where(and(isNull(users.tenantId), eq(users.email, email)))
+    .limit(1);
   if (u) return;
-  const [nu] = await systemDb.insert(users).values({ tenantId: null, email, name: 'Platform Admin', passwordHash: await hashPassword(PASSWORD), isSuperAdmin: true }).returning({ id: users.id });
+  const [nu] = await systemDb
+    .insert(users)
+    .values({
+      tenantId: null,
+      email,
+      name: 'Platform Admin',
+      passwordHash: await hashPassword(PASSWORD),
+      isSuperAdmin: true,
+    })
+    .returning({ id: users.id });
   await systemDb.insert(userRoles).values({ tenantId: null, userId: nu!.id, role: 'SUPER_ADMIN' });
 }
 
-async function addUser(tenantId: string, email: string, name: string, roles: Role[], extra: Partial<typeof users.$inferInsert> = {}): Promise<string> {
-  const [existing] = await systemDb.select().from(users).where(and(eq(users.tenantId, tenantId), eq(users.email, email))).limit(1);
+async function addUser(
+  tenantId: string,
+  email: string,
+  name: string,
+  roles: Role[],
+  extra: Partial<typeof users.$inferInsert> = {},
+): Promise<string> {
+  const [existing] = await systemDb
+    .select()
+    .from(users)
+    .where(and(eq(users.tenantId, tenantId), eq(users.email, email)))
+    .limit(1);
   if (existing) return existing.id;
-  const [u] = await systemDb.insert(users).values({ tenantId, email, name, passwordHash: await hashPassword(PASSWORD), emailVerifiedAt: new Date(), ...extra }).returning({ id: users.id });
+  const [u] = await systemDb
+    .insert(users)
+    .values({
+      tenantId,
+      email,
+      name,
+      passwordHash: await hashPassword(PASSWORD),
+      emailVerifiedAt: new Date(),
+      ...extra,
+    })
+    .returning({ id: users.id });
   for (const role of roles) await systemDb.insert(userRoles).values({ tenantId, userId: u!.id, role });
   return u!.id;
 }
 
 export async function seedTenants(): Promise<{ demoId: string; acmeId: string }> {
-  const ensure = async (slug: string, name: string, ownerEmail: string, isDemo: boolean, planCode: string) => {
+  const ensure = async (
+    slug: string,
+    name: string,
+    ownerEmail: string,
+    isDemo: boolean,
+    planCode: string,
+  ) => {
     const [t] = await systemDb.select().from(tenants).where(eq(tenants.slug, slug)).limit(1);
     if (t) return t.id;
-    const r = await createTenant({ name, slug, isDemo, planCode, owner: { email: ownerEmail, name: '대표 관리자', password: PASSWORD } });
+    const r = await createTenant({
+      name,
+      slug,
+      isDemo,
+      planCode,
+      owner: { email: ownerEmail, name: '대표 관리자', password: PASSWORD },
+    });
     return r.tenantId;
   };
   const demoId = await ensure('demo', 'Demo Sourcing', 'owner@demo.local', true, 'ENTERPRISE');
@@ -86,9 +169,15 @@ export async function seedTenants(): Promise<{ demoId: string; acmeId: string }>
   await addUser(demoId, 'sales@demo.local', '김영업', ['SALES']);
   await addUser(demoId, 'sourcing@demo.local', '이소싱', ['SOURCING_MANAGER']);
   await addUser(demoId, 'finance@demo.local', '박재무', ['FINANCE']);
-  await addUser(demoId, 'customs@demo.local', '최관세 (관세사)', ['CUSTOMS_PARTNER'], { expertTypes: ['CUSTOMS_BROKER'] });
-  await addUser(demoId, 'forwarder@demo.local', '정포워더', ['FORWARDER_PARTNER'], { expertTypes: ['FORWARDER'] });
-  await addUser(demoId, 'lab@demo.local', '한인증 (시험기관)', ['CERTIFICATION_PARTNER'], { expertTypes: ['ELECTRICAL_SAFETY_LAB', 'RRA_EMC_LAB', 'CERTIFICATION_EXPERT'] });
+  await addUser(demoId, 'customs@demo.local', '최관세 (관세사)', ['CUSTOMS_PARTNER'], {
+    expertTypes: ['CUSTOMS_BROKER'],
+  });
+  await addUser(demoId, 'forwarder@demo.local', '정포워더', ['FORWARDER_PARTNER'], {
+    expertTypes: ['FORWARDER'],
+  });
+  await addUser(demoId, 'lab@demo.local', '한인증 (시험기관)', ['CERTIFICATION_PARTNER'], {
+    expertTypes: ['ELECTRICAL_SAFETY_LAB', 'RRA_EMC_LAB', 'CERTIFICATION_EXPERT'],
+  });
   return { demoId, acmeId };
 }
 

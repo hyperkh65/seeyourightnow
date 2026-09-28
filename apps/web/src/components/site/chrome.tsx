@@ -16,13 +16,18 @@ export function BrandMark({ className, href = '/' }: { className?: string; href?
   const logo = assetUrl(site?.brand.logoFileId);
   const name = site?.brand.siteName ?? 'Sourcing';
   return (
-    <Link href={href} className={cn('flex items-center gap-2 font-bold tracking-tight text-ink', className)} aria-label={`${name} 홈`}>
+    <Link
+      href={href}
+      className={cn('flex items-center gap-2 font-bold tracking-tight text-ink', className)}
+      aria-label={`${name} 홈`}
+    >
       {logo ? (
-        // eslint-disable-next-line @next/next/no-img-element
         <img src={logo} alt={name} className="h-7 w-auto max-w-[160px] object-contain" />
       ) : (
         <>
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand text-[13px] font-extrabold text-brand-fg">{name.slice(0, 1)}</span>
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand text-[13px] font-extrabold text-brand-fg">
+            {name.slice(0, 1)}
+          </span>
           <span className="text-[15px]">{name}</span>
         </>
       )}
@@ -37,7 +42,11 @@ export function ThemeToggle() {
     localStorage.setItem('theme', dark ? 'dark' : 'light');
   };
   return (
-    <button onClick={toggle} className="rounded-lg p-2 text-ink-muted hover:bg-ink/5" aria-label="화면 테마 전환">
+    <button
+      onClick={toggle}
+      className="rounded-lg p-2 text-ink-muted hover:bg-ink/5"
+      aria-label="화면 테마 전환"
+    >
       <Sun className="hidden h-4 w-4 dark:block" />
       <Moon className="h-4 w-4 dark:hidden" />
     </button>
@@ -67,7 +76,14 @@ export function PublicHeader() {
   const user = me.data?.user;
   const links = [
     { href: '/search', label: t('nav.search') },
-    ...(user ? [{ href: homeFor(user.audience), label: user.audience === 'CUSTOMER' ? t('nav.mySourcing') : '관리 화면' }] : []),
+    ...(user
+      ? [
+          {
+            href: homeFor(user.audience),
+            label: user.audience === 'CUSTOMER' ? t('nav.mySourcing') : '관리 화면',
+          },
+        ]
+      : []),
   ];
   return (
     <header className="sticky top-0 z-40 border-b border-line/80 bg-surface/85 backdrop-blur supports-[backdrop-filter]:bg-surface/70">
@@ -75,7 +91,14 @@ export function PublicHeader() {
         <BrandMark />
         <nav className="hidden items-center gap-1 md:flex" aria-label="주 메뉴">
           {links.map((l) => (
-            <Link key={l.href} href={l.href} className={cn('rounded-lg px-3 py-2 text-sm font-medium text-ink-soft hover:bg-ink/5 hover:text-ink', path.startsWith(l.href) && 'text-ink')}>
+            <Link
+              key={l.href}
+              href={l.href}
+              className={cn(
+                'rounded-lg px-3 py-2 text-sm font-medium text-ink-soft hover:bg-ink/5 hover:text-ink',
+                path.startsWith(l.href) && 'text-ink',
+              )}
+            >
               {l.label}
             </Link>
           ))}
@@ -99,7 +122,12 @@ export function PublicHeader() {
             </>
           )}
         </div>
-        <button className="rounded-lg p-2 md:hidden" onClick={() => setOpen((o) => !o)} aria-label="메뉴 열기" aria-expanded={open}>
+        <button
+          className="rounded-lg p-2 md:hidden"
+          onClick={() => setOpen((o) => !o)}
+          aria-label="메뉴 열기"
+          aria-expanded={open}
+        >
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
@@ -107,12 +135,20 @@ export function PublicHeader() {
         <div className="border-t border-line bg-surface px-4 py-3 md:hidden">
           <nav className="flex flex-col" aria-label="모바일 메뉴">
             {links.map((l) => (
-              <Link key={l.href} href={l.href} onClick={() => setOpen(false)} className="rounded-lg px-3 py-3 text-[15px] font-medium text-ink hover:bg-ink/5">
+              <Link
+                key={l.href}
+                href={l.href}
+                onClick={() => setOpen(false)}
+                className="rounded-lg px-3 py-3 text-[15px] font-medium text-ink hover:bg-ink/5"
+              >
                 {l.label}
               </Link>
             ))}
             {user ? (
-              <button onClick={logout} className="rounded-lg px-3 py-3 text-left text-[15px] text-ink-muted hover:bg-ink/5">
+              <button
+                onClick={logout}
+                className="rounded-lg px-3 py-3 text-left text-[15px] text-ink-muted hover:bg-ink/5"
+              >
                 {t('nav.logout')}
               </button>
             ) : (
@@ -160,9 +196,18 @@ export function PublicFooter() {
           <BrandMark />
           {site.footer.showCompanyInfo && (
             <p>
-              {[c.legalName, c.representative && `대표 ${c.representative}`, c.businessRegistrationNo && `사업자등록번호 ${c.businessRegistrationNo}`, c.ecommerceRegistrationNo && `통신판매업 ${c.ecommerceRegistrationNo}`].filter(Boolean).join(' · ')}
+              {[
+                c.legalName,
+                c.representative && `대표 ${c.representative}`,
+                c.businessRegistrationNo && `사업자등록번호 ${c.businessRegistrationNo}`,
+                c.ecommerceRegistrationNo && `통신판매업 ${c.ecommerceRegistrationNo}`,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
               <br />
-              {[c.address, c.phone && `Tel ${c.phone}`, c.fax && `Fax ${c.fax}`, c.email].filter(Boolean).join(' · ')}
+              {[c.address, c.phone && `Tel ${c.phone}`, c.fax && `Fax ${c.fax}`, c.email]
+                .filter(Boolean)
+                .join(' · ')}
               {c.csHours && (
                 <>
                   <br />
@@ -179,7 +224,13 @@ export function PublicFooter() {
             <div className="flex flex-wrap gap-2">
               {links.map((l) =>
                 l.url ? (
-                  <a key={l.id} href={l.url} target="_blank" rel="noopener noreferrer" className="rounded-full border border-line px-3 py-1.5 text-ink-soft hover:border-brand/40 hover:text-brand">
+                  <a
+                    key={l.id}
+                    href={l.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-full border border-line px-3 py-1.5 text-ink-soft hover:border-brand/40 hover:text-brand"
+                  >
                     {l.label || SOCIAL_LABEL[l.type] || l.type}
                   </a>
                 ) : (
@@ -192,7 +243,11 @@ export function PublicFooter() {
           )}
           <div className="flex flex-wrap gap-x-4 gap-y-2 text-ink-muted">
             {policies.map((p) => (
-              <Link key={p.type} href={`/policies/${p.type.toLowerCase()}`} className={cn('hover:text-ink', p.type === 'PRIVACY' && 'font-semibold text-ink-soft')}>
+              <Link
+                key={p.type}
+                href={`/policies/${p.type.toLowerCase()}`}
+                className={cn('hover:text-ink', p.type === 'PRIVACY' && 'font-semibold text-ink-soft')}
+              >
                 {p.title}
               </Link>
             ))}
@@ -214,7 +269,17 @@ export function MessengerCta() {
   const cta = site?.social.links.find((l) => l.enabled && l.showAsCta && l.url);
   if (!cta) return null;
   return (
-    <a href={cta.url} target="_blank" rel="noopener noreferrer" className="fixed bottom-5 right-5 z-30 flex items-center gap-2 rounded-full bg-[#FEE500] px-4 py-3 text-sm font-semibold text-[#191919] shadow-pop hover:brightness-95 no-print" style={cta.type.startsWith('KAKAO') ? undefined : { background: 'rgb(var(--brand))', color: 'rgb(var(--brand-fg))' }}>
+    <a
+      href={cta.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="fixed bottom-5 right-5 z-30 flex items-center gap-2 rounded-full bg-[#FEE500] px-4 py-3 text-sm font-semibold text-[#191919] shadow-pop hover:brightness-95 no-print"
+      style={
+        cta.type.startsWith('KAKAO')
+          ? undefined
+          : { background: 'rgb(var(--brand))', color: 'rgb(var(--brand-fg))' }
+      }
+    >
       <MessageCircle className="h-4 w-4" />
       {cta.label || SOCIAL_LABEL[cta.type] || '상담하기'}
     </a>
@@ -224,5 +289,9 @@ export function MessengerCta() {
 export function PreviewBanner() {
   const site = useSite();
   if (!site?.previewing) return null;
-  return <div className="bg-amber-400 px-4 py-1.5 text-center text-xs font-semibold text-amber-950">미리보기 중입니다 — 게시 전 초안이 표시되고 있습니다.</div>;
+  return (
+    <div className="bg-amber-400 px-4 py-1.5 text-center text-xs font-semibold text-amber-950">
+      미리보기 중입니다 — 게시 전 초안이 표시되고 있습니다.
+    </div>
+  );
 }

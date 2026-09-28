@@ -43,14 +43,27 @@ describe('service units', () => {
 
   it('1688 URL/offer parsing and mapping', () => {
     expect(parse1688OfferId('https://detail.1688.com/offer/612345678901.html?spm=a')).toBe('612345678901');
-    const m = map1688Product('1', { productInfo: { subject: '小风扇', saleInfo: { priceRanges: [{ startQuantity: 2, price: 12.5 }], minOrderQuantity: 2 }, image: { images: ['img/a.jpg'] }, attributes: [{ attributeName: '材质', value: 'ABS' }] } });
+    const m = map1688Product('1', {
+      productInfo: {
+        subject: '小风扇',
+        saleInfo: { priceRanges: [{ startQuantity: 2, price: 12.5 }], minOrderQuantity: 2 },
+        image: { images: ['img/a.jpg'] },
+        attributes: [{ attributeName: '材质', value: 'ABS' }],
+      },
+    });
     expect(m?.priceTiers).toEqual([{ minQty: 2, unitPrice: '12.5' }]);
     expect(m?.specs).toEqual({ 材质: 'ABS' });
     expect(map1688Product('2', {})).toBeNull();
   });
 
   it('DCSA event mapping keeps provenance classifiers', () => {
-    const e = mapDcsaEvent({ eventType: 'TRANSPORT', transportEventTypeCode: 'DEPA', eventClassifierCode: 'ACT', eventDateTime: '2026-10-01T00:00:00Z', transportCall: { UNLocationCode: 'CNNGB' } });
+    const e = mapDcsaEvent({
+      eventType: 'TRANSPORT',
+      transportEventTypeCode: 'DEPA',
+      eventClassifierCode: 'ACT',
+      eventDateTime: '2026-10-01T00:00:00Z',
+      transportCall: { UNLocationCode: 'CNNGB' },
+    });
     expect(e?.type).toBe('DEPARTED');
     expect(e?.location).toBe('CNNGB');
     expect(mapDcsaEvent({ eventType: 'X', eventDateTime: '2026-01-01' })).toBeNull();
@@ -65,11 +78,30 @@ describe('service units', () => {
 
   it('perceptual hash is stable across resize/recompression', async () => {
     const img = await sharp({ create: { width: 400, height: 300, channels: 3, background: '#fff' } })
-      .composite([{ input: Buffer.from('<svg width="400" height="300"><circle cx="150" cy="150" r="90" fill="#1f4fd8"/><rect x="260" y="60" width="90" height="180" fill="#f59e0b"/></svg>'), top: 0, left: 0 }])
+      .composite([
+        {
+          input: Buffer.from(
+            '<svg width="400" height="300"><circle cx="150" cy="150" r="90" fill="#1f4fd8"/><rect x="260" y="60" width="90" height="180" fill="#f59e0b"/></svg>',
+          ),
+          top: 0,
+          left: 0,
+        },
+      ])
       .png()
       .toBuffer();
     const small = await sharp(img).resize(120).jpeg({ quality: 60 }).toBuffer();
-    const other = await sharp({ create: { width: 400, height: 300, channels: 3, background: '#000' } }).composite([{ input: Buffer.from('<svg width="400" height="300"><rect x="0" y="0" width="200" height="300" fill="#fff"/></svg>'), top: 0, left: 0 }]).png().toBuffer();
+    const other = await sharp({ create: { width: 400, height: 300, channels: 3, background: '#000' } })
+      .composite([
+        {
+          input: Buffer.from(
+            '<svg width="400" height="300"><rect x="0" y="0" width="200" height="300" fill="#fff"/></svg>',
+          ),
+          top: 0,
+          left: 0,
+        },
+      ])
+      .png()
+      .toBuffer();
     const a = await phash(img);
     const b = await phash(small);
     const c = await phash(other);
@@ -88,11 +120,16 @@ describe('service units', () => {
   });
 
   it('templates escape HTML (no XSS through data)', () => {
-    expect(render('<p>{{name}}</p>', { name: '<img src=x onerror=alert(1)>' })).toBe('<p>&lt;img src&#x3D;x onerror&#x3D;alert(1)&gt;</p>');
+    expect(render('<p>{{name}}</p>', { name: '<img src=x onerror=alert(1)>' })).toBe(
+      '<p>&lt;img src&#x3D;x onerror&#x3D;alert(1)&gt;</p>',
+    );
     expect(render('{{money v "KRW"}}', { v: '1234567.5' })).toBe('₩1,234,568');
   });
 
   it('audit scrub removes secrets', () => {
-    expect(scrub({ apiKey: 'abc', nested: { password: 'p', ok: 1 } })).toEqual({ apiKey: '[REDACTED]', nested: { password: '[REDACTED]', ok: 1 } });
+    expect(scrub({ apiKey: 'abc', nested: { password: 'p', ok: 1 } })).toEqual({
+      apiKey: '[REDACTED]',
+      nested: { password: '[REDACTED]', ok: 1 },
+    });
   });
 });

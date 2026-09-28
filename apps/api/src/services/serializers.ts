@@ -1,4 +1,9 @@
-import { COMPLIANCE_CUSTOMER_LABEL, MATCH_TAG_LABEL_KO, type ComplianceStatus, type MatchTag } from '@sos/core';
+import {
+  COMPLIANCE_CUSTOMER_LABEL,
+  MATCH_TAG_LABEL_KO,
+  type ComplianceStatus,
+  type MatchTag,
+} from '@sos/core';
 import type { requestCandidates, sourceListings, suppliers } from '../db/schema/index.js';
 
 /**
@@ -12,7 +17,11 @@ type Listing = typeof sourceListings.$inferSelect;
 type Supplier = typeof suppliers.$inferSelect;
 
 export function supplierDisplayName(s: Supplier | undefined | null, sourceType: string): string {
-  const privateLabel = ['PRIVATE_NETWORK', 'DIRECT_FACTORY', 'LOCAL_PARTNER', 'INTERNAL_PRODUCT'].includes(sourceType) ? 'Private Sourcing Network' : 'Verified Supplier';
+  const privateLabel = ['PRIVATE_NETWORK', 'DIRECT_FACTORY', 'LOCAL_PARTNER', 'INTERNAL_PRODUCT'].includes(
+    sourceType,
+  )
+    ? 'Private Sourcing Network'
+    : 'Verified Supplier';
   if (!s) return privateLabel;
   if (s.visibility === 'VISIBLE') return s.name;
   if (s.visibility === 'ALIAS') return s.alias || privateLabel;
@@ -20,7 +29,12 @@ export function supplierDisplayName(s: Supplier | undefined | null, sourceType: 
 }
 
 export function sourceLabel(sourceType: string, connector: string): string {
-  if (['PRIVATE_NETWORK', 'DIRECT_FACTORY', 'LOCAL_PARTNER', 'INTERNAL_PRODUCT', 'MANUAL_PROPOSAL'].includes(sourceType)) return '자체 공급망';
+  if (
+    ['PRIVATE_NETWORK', 'DIRECT_FACTORY', 'LOCAL_PARTNER', 'INTERNAL_PRODUCT', 'MANUAL_PROPOSAL'].includes(
+      sourceType,
+    )
+  )
+    return '자체 공급망';
   if (sourceType === 'RFQ_RESULT') return '견적 요청 결과';
   if (sourceType === 'CUSTOMER_NOMINATED') return '고객 지정';
   if (connector.startsWith('DEV_MOCK')) return '개발용 모의 데이터';
@@ -46,7 +60,13 @@ export interface CustomerCandidate {
   isDevMock: boolean;
 }
 
-export function customerCandidate(c: Candidate, l: Listing, s: Supplier | undefined, customerUnitPrice: string | null, badge: CustomerCandidate['priceBadge']): CustomerCandidate {
+export function customerCandidate(
+  c: Candidate,
+  l: Listing,
+  s: Supplier | undefined,
+  customerUnitPrice: string | null,
+  badge: CustomerCandidate['priceBadge'],
+): CustomerCandidate {
   return {
     id: c.id,
     title: l.titleKo || l.title,
@@ -67,12 +87,22 @@ export function customerCandidate(c: Candidate, l: Listing, s: Supplier | undefi
   };
 }
 
-export function customerCompliance(rows: Array<{ code: string; name: string; authority: string; status: string; reasons: string[] }>) {
+export function customerCompliance(
+  rows: Array<{ code: string; name: string; authority: string; status: string; reasons: string[] }>,
+) {
   // Customers see actionable items only; undecidable items are summarised by the UI as "추가 확인 항목".
   return rows
     .filter((r) => r.status !== 'NOT_APPLICABLE' && r.status !== 'UNKNOWN')
     .map((r) => {
-      const label = COMPLIANCE_CUSTOMER_LABEL[r.status as ComplianceStatus] ?? COMPLIANCE_CUSTOMER_LABEL.UNKNOWN;
-      return { code: r.code, name: r.name, authority: r.authority, label: label.ko, tone: label.tone, reasons: r.reasons.slice(0, 3) };
+      const label =
+        COMPLIANCE_CUSTOMER_LABEL[r.status as ComplianceStatus] ?? COMPLIANCE_CUSTOMER_LABEL.UNKNOWN;
+      return {
+        code: r.code,
+        name: r.name,
+        authority: r.authority,
+        label: label.ko,
+        tone: label.tone,
+        reasons: r.reasons.slice(0, 3),
+      };
     });
 }

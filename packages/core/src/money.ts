@@ -165,7 +165,10 @@ export function percentile(values: Decimal.Value[], p: number): Decimal | null {
 }
 
 /** markup = (price - cost) / cost ; margin = (price - cost) / price. Both returned as percentages. */
-export function markupAndMargin(cost: Decimal.Value, price: Decimal.Value): { markupPct: Decimal | null; marginPct: Decimal | null; profit: Decimal } {
+export function markupAndMargin(
+  cost: Decimal.Value,
+  price: Decimal.Value,
+): { markupPct: Decimal | null; marginPct: Decimal | null; profit: Decimal } {
   const c = new D(cost);
   const p = new D(price);
   const profit = p.sub(c);

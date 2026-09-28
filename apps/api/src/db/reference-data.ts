@@ -44,7 +44,8 @@ export const REGULATIONS: RegulationSeed[] = [
     testsRequired: ['전기안전 시험 (품목별 KC 기준)'],
     expertType: 'ELECTRICAL_SAFETY_LAB',
     officialSource: 'https://www.safetykorea.kr',
-    summary: '전원을 사용하는 전기용품은 품목에 따라 안전인증, 안전확인 또는 공급자적합성확인 대상입니다. 정확한 구분은 품목과 정격에 따라 시험기관이 판단합니다.',
+    summary:
+      '전원을 사용하는 전기용품은 품목에 따라 안전인증, 안전확인 또는 공급자적합성확인 대상입니다. 정확한 구분은 품목과 정격에 따라 시험기관이 판단합니다.',
   },
   {
     code: 'KC_EMC',
@@ -78,7 +79,8 @@ export const REGULATIONS: RegulationSeed[] = [
     testsRequired: ['RF 시험', 'EMC 시험'],
     expertType: 'RRA_EMC_LAB',
     officialSource: 'https://www.rra.go.kr',
-    summary: 'Bluetooth, Wi-Fi 등 무선 기능이 있는 기기는 무선기기 적합성평가 대상입니다. 인증받은 모듈 사용 여부에 따라 절차가 달라질 수 있습니다.',
+    summary:
+      'Bluetooth, Wi-Fi 등 무선 기능이 있는 기기는 무선기기 적합성평가 대상입니다. 인증받은 모듈 사용 여부에 따라 절차가 달라질 수 있습니다.',
   },
   {
     code: 'KC_LITHIUM_BATTERY',
@@ -95,7 +97,8 @@ export const REGULATIONS: RegulationSeed[] = [
     testsRequired: ['리튬이차전지 안전 시험 (KC 62133 계열)'],
     expertType: 'ELECTRICAL_SAFETY_LAB',
     officialSource: 'https://www.safetykorea.kr',
-    summary: '리튬이온 배터리 및 배터리 팩은 용량·용도에 따라 안전확인 대상입니다. 기기에 내장된 경우에도 확인이 필요합니다.',
+    summary:
+      '리튬이온 배터리 및 배터리 팩은 용량·용도에 따라 안전확인 대상입니다. 기기에 내장된 경우에도 확인이 필요합니다.',
   },
   {
     code: 'KC_CHILDREN',
@@ -163,7 +166,8 @@ export const REGULATIONS: RegulationSeed[] = [
     testsRequired: ['등급별 시험 (의료기기 기준규격)'],
     expertType: 'MFDS_EXPERT',
     officialSource: 'https://emed.mfds.go.kr',
-    summary: '질병 진단·치료·예방 등 의료 목적을 표방하면 의료기기에 해당할 수 있어 수입업 허가와 품목 허가·인증·신고가 필요합니다.',
+    summary:
+      '질병 진단·치료·예방 등 의료 목적을 표방하면 의료기기에 해당할 수 있어 수입업 허가와 품목 허가·인증·신고가 필요합니다.',
   },
   {
     code: 'LIVING_CHEMICALS',
@@ -214,7 +218,8 @@ export const REGULATIONS: RegulationSeed[] = [
     testsRequired: ['효율·대기전력 측정 (대상 품목에 한함)'],
     expertType: 'ELECTRICAL_SAFETY_LAB',
     officialSource: 'https://eep.energy.or.kr',
-    summary: '지정된 품목만 대상입니다. 해당 품목이면 효율등급 또는 대기전력 기준을 충족하고 표시해야 합니다.',
+    summary:
+      '지정된 품목만 대상입니다. 해당 품목이면 효율등급 또는 대기전력 기준을 충족하고 표시해야 합니다.',
   },
   {
     code: 'FIRE_EQUIPMENT',
@@ -260,28 +265,126 @@ export interface HsSeed {
 }
 
 export const HS_SAMPLES: HsSeed[] = [
-  { code: '841451', ko: '선풍기 (탁상·바닥·벽걸이·천장형 등, 전동기 출력 125W 이하)', en: 'Table, floor, wall, window, ceiling or roof fans, with a self-contained electric motor of an output not exceeding 125 W', keywords: ['선풍기', '미니선풍기', '휴대용 선풍기', 'fan', 'mini fan', '风扇'] },
-  { code: '851830', ko: '헤드폰·이어폰 (마이크 결합 여부 불문)', en: 'Headphones and earphones, whether or not combined with a microphone', keywords: ['이어폰', '헤드폰', 'earphone', 'headphone', 'earbuds', '耳机'] },
-  { code: '851762', ko: '음성·영상·데이터 송수신·변환·재생 기기 (무선 통신기기 등)', en: 'Machines for the reception, conversion and transmission or regeneration of voice, images or other data', keywords: ['블루투스', '무선', 'bluetooth', 'wifi', 'router', '蓝牙'] },
-  { code: '850760', ko: '리튬이온 축전지', en: 'Lithium-ion accumulators', keywords: ['리튬', '배터리', '보조배터리', 'battery', 'power bank', '电池'] },
-  { code: '850440', ko: '정지형 변환기 (어댑터·충전기 등)', en: 'Static converters', keywords: ['어댑터', '충전기', 'adapter', 'charger', '充电器'] },
-  { code: '940542', ko: 'LED 광원 전용 조명기구 (기타)', en: 'Other electric luminaires and lighting fittings designed for use solely with LED light sources', keywords: ['LED', '조명', '램프', '스탠드', 'lamp', 'light', '灯'] },
-  { code: '851310', ko: '휴대용 전기램프', en: 'Portable electric lamps designed to function by their own source of energy', keywords: ['손전등', '랜턴', 'flashlight', 'torch', '手电筒'] },
-  { code: '950300', ko: '완구 (세발자전거·인형 등)', en: 'Tricycles, scooters, dolls and other toys; puzzles', keywords: ['장난감', '완구', '인형', 'toy', 'doll', '玩具'] },
-  { code: '392410', ko: '플라스틱제 식탁용품·주방용품', en: 'Tableware and kitchenware of plastics', keywords: ['플라스틱 컵', '밀폐용기', '도시락', 'plastic cup', 'lunch box', '塑料餐具'] },
-  { code: '732393', ko: '스테인리스강제 식탁·주방용품', en: 'Table, kitchen or other household articles of stainless steel', keywords: ['텀블러', '스테인리스', 'tumbler', 'stainless', '不锈钢杯'] },
-  { code: '851671', ko: '커피·차 메이커', en: 'Coffee or tea makers', keywords: ['커피메이커', '전기포트', 'coffee maker', '咖啡机'] },
-  { code: '850980', ko: '기타 가정용 전기기기 (전동기 내장)', en: 'Other electro-mechanical domestic appliances with self-contained electric motor', keywords: ['가정용', '전동', '블렌더', 'appliance', '家电'] },
-  { code: '420292', ko: '가방류 (외면이 플라스틱 시트 또는 방직용 섬유제)', en: 'Containers with outer surface of sheeting of plastics or of textile materials', keywords: ['가방', '파우치', 'bag', 'pouch', '包'] },
-  { code: '330499', ko: '미용·메이크업·피부관리용 제품 (기타)', en: 'Beauty or make-up preparations and preparations for the care of the skin, other', keywords: ['화장품', '크림', 'cosmetic', 'cream', '化妆品'] },
-  { code: '901890', ko: '의료용 기기 (기타)', en: 'Other instruments and appliances used in medical sciences', keywords: ['의료기기', 'medical device', '医疗器械'] },
-  { code: '842410', ko: '소화기', en: 'Fire extinguishers, whether or not charged', keywords: ['소화기', 'fire extinguisher', '灭火器'] },
-  { code: '630260', ko: '테리직물 등의 화장실·주방용 린넨', en: 'Toilet linen and kitchen linen, of terry towelling', keywords: ['수건', '타월', 'towel', '毛巾'] },
-  { code: '961900', ko: '위생용품 (생리대·기저귀 등)', en: 'Sanitary towels, napkins and similar articles', keywords: ['기저귀', '생리대', 'diaper', '尿不湿'] },
+  {
+    code: '841451',
+    ko: '선풍기 (탁상·바닥·벽걸이·천장형 등, 전동기 출력 125W 이하)',
+    en: 'Table, floor, wall, window, ceiling or roof fans, with a self-contained electric motor of an output not exceeding 125 W',
+    keywords: ['선풍기', '미니선풍기', '휴대용 선풍기', 'fan', 'mini fan', '风扇'],
+  },
+  {
+    code: '851830',
+    ko: '헤드폰·이어폰 (마이크 결합 여부 불문)',
+    en: 'Headphones and earphones, whether or not combined with a microphone',
+    keywords: ['이어폰', '헤드폰', 'earphone', 'headphone', 'earbuds', '耳机'],
+  },
+  {
+    code: '851762',
+    ko: '음성·영상·데이터 송수신·변환·재생 기기 (무선 통신기기 등)',
+    en: 'Machines for the reception, conversion and transmission or regeneration of voice, images or other data',
+    keywords: ['블루투스', '무선', 'bluetooth', 'wifi', 'router', '蓝牙'],
+  },
+  {
+    code: '850760',
+    ko: '리튬이온 축전지',
+    en: 'Lithium-ion accumulators',
+    keywords: ['리튬', '배터리', '보조배터리', 'battery', 'power bank', '电池'],
+  },
+  {
+    code: '850440',
+    ko: '정지형 변환기 (어댑터·충전기 등)',
+    en: 'Static converters',
+    keywords: ['어댑터', '충전기', 'adapter', 'charger', '充电器'],
+  },
+  {
+    code: '940542',
+    ko: 'LED 광원 전용 조명기구 (기타)',
+    en: 'Other electric luminaires and lighting fittings designed for use solely with LED light sources',
+    keywords: ['LED', '조명', '램프', '스탠드', 'lamp', 'light', '灯'],
+  },
+  {
+    code: '851310',
+    ko: '휴대용 전기램프',
+    en: 'Portable electric lamps designed to function by their own source of energy',
+    keywords: ['손전등', '랜턴', 'flashlight', 'torch', '手电筒'],
+  },
+  {
+    code: '950300',
+    ko: '완구 (세발자전거·인형 등)',
+    en: 'Tricycles, scooters, dolls and other toys; puzzles',
+    keywords: ['장난감', '완구', '인형', 'toy', 'doll', '玩具'],
+  },
+  {
+    code: '392410',
+    ko: '플라스틱제 식탁용품·주방용품',
+    en: 'Tableware and kitchenware of plastics',
+    keywords: ['플라스틱 컵', '밀폐용기', '도시락', 'plastic cup', 'lunch box', '塑料餐具'],
+  },
+  {
+    code: '732393',
+    ko: '스테인리스강제 식탁·주방용품',
+    en: 'Table, kitchen or other household articles of stainless steel',
+    keywords: ['텀블러', '스테인리스', 'tumbler', 'stainless', '不锈钢杯'],
+  },
+  {
+    code: '851671',
+    ko: '커피·차 메이커',
+    en: 'Coffee or tea makers',
+    keywords: ['커피메이커', '전기포트', 'coffee maker', '咖啡机'],
+  },
+  {
+    code: '850980',
+    ko: '기타 가정용 전기기기 (전동기 내장)',
+    en: 'Other electro-mechanical domestic appliances with self-contained electric motor',
+    keywords: ['가정용', '전동', '블렌더', 'appliance', '家电'],
+  },
+  {
+    code: '420292',
+    ko: '가방류 (외면이 플라스틱 시트 또는 방직용 섬유제)',
+    en: 'Containers with outer surface of sheeting of plastics or of textile materials',
+    keywords: ['가방', '파우치', 'bag', 'pouch', '包'],
+  },
+  {
+    code: '330499',
+    ko: '미용·메이크업·피부관리용 제품 (기타)',
+    en: 'Beauty or make-up preparations and preparations for the care of the skin, other',
+    keywords: ['화장품', '크림', 'cosmetic', 'cream', '化妆品'],
+  },
+  {
+    code: '901890',
+    ko: '의료용 기기 (기타)',
+    en: 'Other instruments and appliances used in medical sciences',
+    keywords: ['의료기기', 'medical device', '医疗器械'],
+  },
+  {
+    code: '842410',
+    ko: '소화기',
+    en: 'Fire extinguishers, whether or not charged',
+    keywords: ['소화기', 'fire extinguisher', '灭火器'],
+  },
+  {
+    code: '630260',
+    ko: '테리직물 등의 화장실·주방용 린넨',
+    en: 'Toilet linen and kitchen linen, of terry towelling',
+    keywords: ['수건', '타월', 'towel', '毛巾'],
+  },
+  {
+    code: '961900',
+    ko: '위생용품 (생리대·기저귀 등)',
+    en: 'Sanitary towels, napkins and similar articles',
+    keywords: ['기저귀', '생리대', 'diaper', '尿不湿'],
+  },
 ];
 
 /** UN/LOCODE subset for main China/Korea/Hong Kong/Vietnam trade ports. Coordinates are approximate port positions. */
-export const PORTS: Array<{ unlocode: string; name: string; country: string; lat: number; lon: number; geofenceKm?: number; kind?: string }> = [
+export const PORTS: Array<{
+  unlocode: string;
+  name: string;
+  country: string;
+  lat: number;
+  lon: number;
+  geofenceKm?: number;
+  kind?: string;
+}> = [
   { unlocode: 'CNSHA', name: 'Shanghai', country: 'CN', lat: 31.36, lon: 121.62, geofenceKm: 40 },
   { unlocode: 'CNNGB', name: 'Ningbo', country: 'CN', lat: 29.93, lon: 121.85, geofenceKm: 25 },
   { unlocode: 'CNYTN', name: 'Yantian (Shenzhen)', country: 'CN', lat: 22.57, lon: 114.27, geofenceKm: 15 },
@@ -308,24 +411,100 @@ export const PLANS = [
     code: 'STARTER',
     name: 'Starter',
     description: '작은 규모의 소싱 사업자용',
-    features: ['PRODUCT_SEARCH', 'VISION_SEARCH', 'DOMESTIC_MARKET', 'COMPLIANCE', 'FREIGHT', 'CUSTOMS', 'QUOTATION', 'CRM', 'SHIPMENT'],
-    limits: { users: { value: 5, hard: true }, monthly_searches: { value: 500, hard: false }, ai_requests: { value: 2000, hard: false }, storage_mb: { value: 5000, hard: true }, quotes: { value: 200, hard: false }, projects: { value: 200, hard: false }, api_calls: { value: 0, hard: true }, custom_domains: { value: 0, hard: true } },
+    features: [
+      'PRODUCT_SEARCH',
+      'VISION_SEARCH',
+      'DOMESTIC_MARKET',
+      'COMPLIANCE',
+      'FREIGHT',
+      'CUSTOMS',
+      'QUOTATION',
+      'CRM',
+      'SHIPMENT',
+    ],
+    limits: {
+      users: { value: 5, hard: true },
+      monthly_searches: { value: 500, hard: false },
+      ai_requests: { value: 2000, hard: false },
+      storage_mb: { value: 5000, hard: true },
+      quotes: { value: 200, hard: false },
+      projects: { value: 200, hard: false },
+      api_calls: { value: 0, hard: true },
+      custom_domains: { value: 0, hard: true },
+    },
     priceMonthly: '99000',
   },
   {
     code: 'BUSINESS',
     name: 'Business',
     description: '자체 브랜드로 운영하는 소싱·무역 회사용',
-    features: ['PRODUCT_SEARCH', 'VISION_SEARCH', 'DOMESTIC_MARKET', 'COMPLIANCE', 'FREIGHT', 'CUSTOMS', 'QUOTATION', 'CONTRACT', 'INVOICE', 'SHIPMENT', 'AIS', 'CRM', 'ANALYTICS', 'WHITE_LABEL', 'CUSTOM_DOMAIN', 'EXPERT_PORTAL', 'WEBHOOKS'],
-    limits: { users: { value: 25, hard: true }, monthly_searches: { value: 5000, hard: false }, ai_requests: { value: 20000, hard: false }, storage_mb: { value: 50000, hard: true }, quotes: { value: 2000, hard: false }, projects: { value: 2000, hard: false }, api_calls: { value: 100000, hard: false }, custom_domains: { value: 2, hard: true } },
+    features: [
+      'PRODUCT_SEARCH',
+      'VISION_SEARCH',
+      'DOMESTIC_MARKET',
+      'COMPLIANCE',
+      'FREIGHT',
+      'CUSTOMS',
+      'QUOTATION',
+      'CONTRACT',
+      'INVOICE',
+      'SHIPMENT',
+      'AIS',
+      'CRM',
+      'ANALYTICS',
+      'WHITE_LABEL',
+      'CUSTOM_DOMAIN',
+      'EXPERT_PORTAL',
+      'WEBHOOKS',
+    ],
+    limits: {
+      users: { value: 25, hard: true },
+      monthly_searches: { value: 5000, hard: false },
+      ai_requests: { value: 20000, hard: false },
+      storage_mb: { value: 50000, hard: true },
+      quotes: { value: 2000, hard: false },
+      projects: { value: 2000, hard: false },
+      api_calls: { value: 100000, hard: false },
+      custom_domains: { value: 2, hard: true },
+    },
     priceMonthly: '490000',
   },
   {
     code: 'ENTERPRISE',
     name: 'Enterprise',
     description: '전 기능과 무제한에 가까운 한도',
-    features: ['PRODUCT_SEARCH', 'VISION_SEARCH', 'DOMESTIC_MARKET', 'COMPLIANCE', 'FREIGHT', 'CUSTOMS', 'QUOTATION', 'CONTRACT', 'INVOICE', 'SHIPMENT', 'AIS', 'CRM', 'ANALYTICS', 'API', 'WHITE_LABEL', 'CUSTOM_DOMAIN', 'JOINT_SOURCING', 'PRODUCT_DISCOVERY', 'EXPERT_PORTAL', 'WEBHOOKS'],
-    limits: { users: { value: -1, hard: false }, monthly_searches: { value: -1, hard: false }, ai_requests: { value: -1, hard: false }, storage_mb: { value: -1, hard: false }, quotes: { value: -1, hard: false }, projects: { value: -1, hard: false }, api_calls: { value: -1, hard: false }, custom_domains: { value: 20, hard: true } },
+    features: [
+      'PRODUCT_SEARCH',
+      'VISION_SEARCH',
+      'DOMESTIC_MARKET',
+      'COMPLIANCE',
+      'FREIGHT',
+      'CUSTOMS',
+      'QUOTATION',
+      'CONTRACT',
+      'INVOICE',
+      'SHIPMENT',
+      'AIS',
+      'CRM',
+      'ANALYTICS',
+      'API',
+      'WHITE_LABEL',
+      'CUSTOM_DOMAIN',
+      'JOINT_SOURCING',
+      'PRODUCT_DISCOVERY',
+      'EXPERT_PORTAL',
+      'WEBHOOKS',
+    ],
+    limits: {
+      users: { value: -1, hard: false },
+      monthly_searches: { value: -1, hard: false },
+      ai_requests: { value: -1, hard: false },
+      storage_mb: { value: -1, hard: false },
+      quotes: { value: -1, hard: false },
+      projects: { value: -1, hard: false },
+      api_calls: { value: -1, hard: false },
+      custom_domains: { value: 20, hard: true },
+    },
     priceMonthly: null,
   },
 ];

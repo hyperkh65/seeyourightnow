@@ -50,7 +50,8 @@ export const COST_ITEM_LABEL_KO: Record<CostItemKey | 'customs_duty' | 'vat', st
 };
 
 /** Which margin component each cost line belongs to (used by the Margin Engine). */
-export type PricingComponent = 'PRODUCT' | 'FREIGHT' | 'INSPECTION' | 'SERVICE' | 'DOMESTIC_DELIVERY' | 'TAX' | 'PASS_THROUGH';
+export type PricingComponent =
+  'PRODUCT' | 'FREIGHT' | 'INSPECTION' | 'SERVICE' | 'DOMESTIC_DELIVERY' | 'TAX' | 'PASS_THROUGH';
 
 export const COST_ITEM_COMPONENT: Record<CostItemKey | 'customs_duty' | 'vat', PricingComponent> = {
   product_cost: 'PRODUCT',
@@ -139,7 +140,8 @@ export interface LandedCostResult {
 const CIF_KEYS: CostItemKey[] = ['product_cost', 'international_freight', 'insurance'];
 
 export function calculateLandedCost(input: LandedCostInput): LandedCostResult {
-  if (!Number.isInteger(input.quantity) || input.quantity <= 0) throw new Error('quantity must be a positive integer');
+  if (!Number.isInteger(input.quantity) || input.quantity <= 0)
+    throw new Error('quantity must be a positive integer');
   const base = input.baseCurrency.toUpperCase();
   const qty = new D(input.quantity);
   const warnings: string[] = [];
@@ -189,12 +191,13 @@ export function calculateLandedCost(input: LandedCostInput): LandedCostResult {
         case 'FULL_ON_ORDER':
           break;
         case 'AMORTIZE': {
-          const units = input.amortizationUnits && input.amortizationUnits > 0 ? input.amortizationUnits : null;
+          const units =
+            input.amortizationUnits && input.amortizationUnits > 0 ? input.amortizationUnits : null;
           if (!units) {
             warnings.push('인증비 분할 기준 수량이 없어 이번 주문에 전액 반영했습니다.');
           } else {
             // Only this order's share of the certification cost is carried.
-            const perUnit = (item.basis === 'PER_UNIT' ? converted : converted.div(units));
+            const perUnit = item.basis === 'PER_UNIT' ? converted : converted.div(units);
             total = perUnit.mul(Math.min(units, input.quantity));
             note = `인증비 ${units}개 기준 분할`;
           }
@@ -227,7 +230,9 @@ export function calculateLandedCost(input: LandedCostInput): LandedCostResult {
     });
   }
 
-  const cifTotal = lines.filter((l) => (CIF_KEYS as string[]).includes(l.key)).reduce((a, l) => a.add(l.totalBase), new D(0));
+  const cifTotal = lines
+    .filter((l) => (CIF_KEYS as string[]).includes(l.key))
+    .reduce((a, l) => a.add(l.totalBase), new D(0));
   if (!lines.some((l) => l.key === 'international_freight')) {
     warnings.push('국제운송비가 없어 과세가격(CIF)이 과소 계산될 수 있습니다.');
     complete = false;
@@ -272,11 +277,15 @@ export function calculateLandedCost(input: LandedCostInput): LandedCostResult {
     note: `(과세가격 + 관세) × ${input.vatPct}%${input.vatRecoverable ? ' · 매입세액 공제 대상' : ''}`,
   });
 
-  const exVat = lines.filter((l) => l.includedInLandedCost && l.key !== 'vat').reduce((a, l) => a.add(l.totalBase), new D(0));
+  const exVat = lines
+    .filter((l) => l.includedInLandedCost && l.key !== 'vat')
+    .reduce((a, l) => a.add(l.totalBase), new D(0));
   const incVat = exVat.add(vat);
   const landed = input.vatRecoverable ? exVat : incVat;
 
-  const verification = weakestVerification(lines.filter((l) => l.includedInLandedCost).map((l) => l.verification));
+  const verification = weakestVerification(
+    lines.filter((l) => l.includedInLandedCost).map((l) => l.verification),
+  );
 
   return {
     baseCurrency: base,

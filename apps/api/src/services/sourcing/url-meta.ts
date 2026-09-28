@@ -12,7 +12,10 @@ const UA = 'SourcingOS-LinkPreview/1.0 (+https://github.com/)';
 export async function robotsAllows(url: URL): Promise<boolean> {
   return cached(`robots:${url.host}`, 6 * 3600, async () => {
     try {
-      const res = await safeFetch(`${url.protocol}//${url.host}/robots.txt`, { timeoutMs: 5000, headers: { 'User-Agent': UA } });
+      const res = await safeFetch(`${url.protocol}//${url.host}/robots.txt`, {
+        timeoutMs: 5000,
+        headers: { 'User-Agent': UA },
+      });
       if (!res.ok) return { rules: [] as string[] };
       const txt = await readLimitedText(res, 200_000);
       const rules: string[] = [];
@@ -45,22 +48,48 @@ export interface UrlMeta {
 }
 
 const meta = (html: string, prop: string) =>
-  new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]*content=["']([^"']+)["']`, 'i').exec(html)?.[1] ??
-  new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["']${prop}["']`, 'i').exec(html)?.[1] ??
+  new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]*content=["']([^"']+)["']`, 'i').exec(
+    html,
+  )?.[1] ??
+  new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["']${prop}["']`, 'i').exec(
+    html,
+  )?.[1] ??
   null;
 
-const decode = (s: string | null) => (s ? s.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim() : null);
+const decode = (s: string | null) =>
+  s
+    ? s
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .trim()
+    : null;
 
 export async function fetchUrlMeta(raw: string): Promise<UrlMeta> {
   const url = new URL(raw);
-  const out: UrlMeta = { url: raw, host: url.host, title: null, description: null, image: null, price: null, currency: null, blockedByRobots: false, error: null };
+  const out: UrlMeta = {
+    url: raw,
+    host: url.host,
+    title: null,
+    description: null,
+    image: null,
+    price: null,
+    currency: null,
+    blockedByRobots: false,
+    error: null,
+  };
   if (!(await robotsAllows(url))) {
     out.blockedByRobots = true;
     out.error = '이 사이트는 자동 수집을 허용하지 않습니다. 제품 사진이나 제품명을 함께 입력해 주세요.';
     return out;
   }
   try {
-    const res = await safeFetch(raw, { timeoutMs: 10_000, headers: { 'User-Agent': UA, Accept: 'text/html' } });
+    const res = await safeFetch(raw, {
+      timeoutMs: 10_000,
+      headers: { 'User-Agent': UA, Accept: 'text/html' },
+    });
     if (!res.ok) {
       out.error = `페이지를 불러오지 못했습니다 (HTTP ${res.status}).`;
       return out;

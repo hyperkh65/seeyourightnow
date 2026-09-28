@@ -1,12 +1,18 @@
 import { desc, eq, isNull, or, sql } from 'drizzle-orm';
-import { FxTable, type FxRate } from '@sos/core';
+import { D, FxTable, type FxRate } from '@sos/core';
 import type { Tx } from '../db/client.js';
 import { fxRates } from '../db/schema/index.js';
 import { safeFetch } from '../lib/http.js';
 import type { LoadedConnection } from './connections/index.js';
 
 /** Latest known rate per currency pair (tenant-specific rows win over platform rows). */
-export async function loadFxTable(tx: Tx, tenantId: string): Promise<{ table: FxTable; rates: Array<FxRate & { verification: string; collectedAt: Date; tenantScoped: boolean }> }> {
+export async function loadFxTable(
+  tx: Tx,
+  tenantId: string,
+): Promise<{
+  table: FxTable;
+  rates: Array<FxRate & { verification: string; collectedAt: Date; tenantScoped: boolean }>;
+}> {
   const rows = await tx
     .select()
     .from(fxRates)
@@ -19,12 +25,24 @@ export async function loadFxTable(tx: Tx, tenantId: string): Promise<{ table: Fx
     const cur = seen.get(k);
     if (!cur || (r.tenantId && !cur.tenantId && r.rateDate >= cur.rateDate)) seen.set(k, r);
   }
-  const rates = [...seen.values()].map((r) => ({ base: r.base, quote: r.quote, rate: r.rate, rateDate: r.rateDate, source: r.source, verification: r.verification, collectedAt: r.collectedAt, tenantScoped: !!r.tenantId }));
+  const rates = [...seen.values()].map((r) => ({
+    base: r.base,
+    quote: r.quote,
+    rate: r.rate,
+    rateDate: r.rateDate,
+    source: r.source,
+    verification: r.verification,
+    collectedAt: r.collectedAt,
+    tenantScoped: !!r.tenantId,
+  }));
   return { table: new FxTable(rates), rates };
 }
 
 /** Korea Eximbank daily rates (매매기준율, KRW per unit). */
-export async function fetchKoreaEximRates(conn: LoadedConnection, date = new Date()): Promise<Array<{ base: string; rate: string; rateDate: string }>> {
+export async function fetchKoreaEximRates(
+  conn: LoadedConnection,
+  date = new Date(),
+): Promise<Array<{ base: string; rate: string; rateDate: string }>> {
   const ymd = date.toISOString().slice(0, 10).replace(/-/g, '');
   const url = `https://oapi.koreaexim.go.kr/site/program/financial/exchangeJSON?authkey=${encodeURIComponent(conn.secrets.authKey ?? '')}&searchdate=${ymd}&data=AP01`;
   const res = await safeFetch(url, { trusted: true, timeoutMs: 15_000 });
@@ -33,24 +51,38 @@ export async function fetchKoreaEximRates(conn: LoadedConnection, date = new Dat
   const out: Array<{ base: string; rate: string; rateDate: string }> = [];
   for (const r of rows ?? []) {
     if (r.result !== 1) continue;
-    const raw = Number(String(r.deal_bas_r).replace(/,/g, ''));
-    if (!Number.isFinite(raw) || raw <= 0) continue;
+    const rawText = String(r.deal_bas_r).replace(/,/g, '');
+    if (!/^\d+(\.\d+)?$/.test(rawText) || new D(rawText).lte(0)) continue;
     let base = r.cur_unit;
-    let rate = raw;
+    let rate = new D(rawText);
     const per = /\((\d+)\)/.exec(base);
     if (per) {
-      rate = raw / Number(per[1]);
+      rate = rate.div(per[1]!);
       base = base.replace(/\(\d+\)/, '');
     }
     if (base === 'CNH') base = 'CNY';
-    out.push({ base, rate: rate.toString(), rateDate: date.toISOString().slice(0, 10) });
+    out.push({ base, rate: rate.toFixed(), rateDate: date.toISOString().slice(0, 10) });
   }
   return out;
 }
 
-export async function saveFxRates(tx: Tx, tenantId: string | null, rows: Array<{ base: string; rate: string; rateDate: string }>, source: string, verification = 'SYSTEM_CALCULATED'): Promise<number> {
+export async function saveFxRates(
+  tx: Tx,
+  tenantId: string | null,
+  rows: Array<{ base: string; rate: string; rateDate: string }>,
+  source: string,
+  verification = 'SYSTEM_CALCULATED',
+): Promise<number> {
   for (const r of rows) {
-    await tx.insert(fxRates).values({ tenantId, base: r.base, quote: 'KRW', rate: r.rate, rateDate: r.rateDate, source, verification });
+    await tx.insert(fxRates).values({
+      tenantId,
+      base: r.base,
+      quote: 'KRW',
+      rate: r.rate,
+      rateDate: r.rateDate,
+      source,
+      verification,
+    });
   }
   return rows.length;
 }

@@ -73,7 +73,13 @@ const JOB: Record<string, [string, Tone]> = {
   RETRYING: ['재시도 대기', 'warn'],
   DEAD_LETTER: ['실패 (중단)', 'danger'],
 };
-const CONN: Record<string, [string, Tone]> = { CONNECTED: ['연결됨', 'ok'], DISCONNECTED: ['연결 안 됨', 'neutral'], ERROR: ['오류', 'danger'] };
+const CONN: Record<string, [string, Tone]> = {
+  CONNECTED: ['연결됨', 'ok'],
+  DISCONNECTED: ['연결 안 됨', 'neutral'],
+  ERROR: ['오류', 'danger'],
+  DISABLED: ['꺼짐', 'neutral'],
+  UNTESTED: ['테스트 전', 'neutral'],
+};
 
 function make(map: Record<string, [string, Tone]>) {
   return function S({ status, className }: { status: string; className?: string }) {
@@ -95,20 +101,44 @@ export const StageBadge = make(STAGE);
 export const JobStatus = make(JOB);
 export const ConnectionStatus = make(CONN);
 
-export const STAGE_LABEL: Record<string, string> = Object.fromEntries(Object.entries(STAGE).map(([k, v]) => [k, v[0]]));
+export const STAGE_LABEL: Record<string, string> = Object.fromEntries(
+  Object.entries(STAGE).map(([k, v]) => [k, v[0]]),
+);
 
 /** Trust badge: tells users how a number was obtained. */
-export function VerificationBadge({ verification, source }: { verification: string; source?: string | null }) {
+export function VerificationBadge({
+  verification,
+  source,
+}: {
+  verification: string;
+  source?: string | null;
+}) {
   const demo = source?.includes('DEMO');
   const map: Record<string, { label: string; tone: Tone; icon: React.ReactNode }> = {
-    UNVERIFIED: { label: demo ? '데모 데이터' : '미검증', tone: demo ? 'warn' : 'neutral', icon: <CircleDashed className="h-3 w-3" /> },
+    UNVERIFIED: {
+      label: demo ? '데모 데이터' : '미검증',
+      tone: demo ? 'warn' : 'neutral',
+      icon: <CircleDashed className="h-3 w-3" />,
+    },
     AI_ESTIMATE: { label: 'AI 예상', tone: 'info', icon: <Bot className="h-3 w-3" /> },
     SYSTEM_CALCULATED: { label: '계산값', tone: 'neutral', icon: <CircleDashed className="h-3 w-3" /> },
-    PARTNER_VERIFIED: { label: source?.startsWith('FORWARDER') ? '포워더 확인' : '협력사 확인', tone: 'brand', icon: <Ship className="h-3 w-3" /> },
-    EXPERT_VERIFIED: { label: source?.includes('CUSTOMS') ? '관세사 확인' : '전문가 확인', tone: 'purple', icon: <Scale className="h-3 w-3" /> },
+    PARTNER_VERIFIED: {
+      label: source?.startsWith('FORWARDER') ? '포워더 확인' : '협력사 확인',
+      tone: 'brand',
+      icon: <Ship className="h-3 w-3" />,
+    },
+    EXPERT_VERIFIED: {
+      label: source?.includes('CUSTOMS') ? '관세사 확인' : '전문가 확인',
+      tone: 'purple',
+      icon: <Scale className="h-3 w-3" />,
+    },
     ACTUAL: { label: '실제 확정', tone: 'ok', icon: <BadgeCheck className="h-3 w-3" /> },
   };
-  const m = map[verification] ?? { label: verification, tone: 'neutral' as Tone, icon: <FlaskConical className="h-3 w-3" /> };
+  const m = map[verification] ?? {
+    label: verification,
+    tone: 'neutral' as Tone,
+    icon: <FlaskConical className="h-3 w-3" />,
+  };
   return (
     <Badge tone={m.tone} icon={m.icon}>
       {m.label}
@@ -117,13 +147,27 @@ export function VerificationBadge({ verification, source }: { verification: stri
 }
 
 export function PriceBadge({ badge }: { badge: 'ESTIMATED' | 'VERIFIED' | 'FINAL' | string }) {
-  if (badge === 'FINAL') return <Badge tone="ok" icon={<BadgeCheck className="h-3 w-3" />}>확정가</Badge>;
+  if (badge === 'FINAL')
+    return (
+      <Badge tone="ok" icon={<BadgeCheck className="h-3 w-3" />}>
+        확정가
+      </Badge>
+    );
   if (badge === 'VERIFIED') return <Badge tone="brand">협력사 확인 반영</Badge>;
-  return <Badge tone="info" icon={<Bot className="h-3 w-3" />}>AI 예상</Badge>;
+  return (
+    <Badge tone="info" icon={<Bot className="h-3 w-3" />}>
+      AI 예상
+    </Badge>
+  );
 }
 
 const RISK_TONE: Record<string, Tone> = { LOW: 'ok', MEDIUM: 'warn', HIGH: 'danger', CRITICAL: 'danger' };
-const RISK_LABEL: Record<string, string> = { LOW: '낮음', MEDIUM: '보통', HIGH: '높음', CRITICAL: '매우 높음' };
+const RISK_LABEL: Record<string, string> = {
+  LOW: '낮음',
+  MEDIUM: '보통',
+  HIGH: '높음',
+  CRITICAL: '매우 높음',
+};
 export function RiskBadge({ level }: { level: string }) {
   return <Badge tone={RISK_TONE[level] ?? 'neutral'}>{RISK_LABEL[level] ?? level}</Badge>;
 }
@@ -142,4 +186,32 @@ export const RISK_DIMENSION_LABEL: Record<string, string> = {
   PAYMENT: '결제',
   MARKET: '시장',
   CERTIFICATION: '인증',
+};
+
+export const ROLE_LABEL: Record<string, string> = {
+  SUPER_ADMIN: '플랫폼 관리자',
+  TENANT_OWNER: '대표 관리자',
+  TENANT_ADMIN: '관리자',
+  SALES: '영업',
+  SOURCING_MANAGER: '소싱 담당',
+  FINANCE: '재무',
+  WAREHOUSE: '물류·창고',
+  CUSTOMS_PARTNER: '관세사',
+  FORWARDER_PARTNER: '포워더',
+  CERTIFICATION_PARTNER: '인증 전문가',
+  SUPPLIER_PARTNER: '공급 파트너',
+  CUSTOMER_ADMIN: '고객 관리자',
+  CUSTOMER_USER: '고객',
+  READ_ONLY: '조회 전용',
+};
+
+export const EXPERT_TYPE_LABEL: Record<string, string> = {
+  CUSTOMS_BROKER: '관세사',
+  CERTIFICATION_EXPERT: '인증 전문가',
+  ELECTRICAL_SAFETY_LAB: '전기안전 시험소',
+  RRA_EMC_LAB: '전파·EMC 시험소',
+  MFDS_EXPERT: '식약처 전문가',
+  CHEMICAL_SAFETY_EXPERT: '화학제품 전문가',
+  FIRE_CERTIFICATION_EXPERT: '소방 인증 전문가',
+  FORWARDER: '포워더',
 };

@@ -16,14 +16,32 @@ import {
   D,
 } from '@sos/core';
 import type { Tx } from '../db/client.js';
-import { companies, complianceChecks, costCalculations, costItems, freightQuotes, freightRates, hsClassifications, marginRuleSets, pricingSnapshots, products, requestCandidates, sourceListings, sourcingProjects, sourcingRequests } from '../db/schema/index.js';
+import {
+  companies,
+  complianceChecks,
+  costCalculations,
+  costItems,
+  freightQuotes,
+  freightRates,
+  hsClassifications,
+  marginRuleSets,
+  pricingSnapshots,
+  products,
+  requestCandidates,
+  sourceListings,
+  sourcingProjects,
+  sourcingRequests,
+} from '../db/schema/index.js';
 import { notFound } from '../lib/errors.js';
 import { loadFxTable } from './fx.js';
 import { bestTariff, tariffOptions } from './hs.js';
 import { getPublished } from './settings.js';
 import { effectiveAttributes } from './compliance.js';
 
-export async function publishedMarginSet(tx: Tx, tenantId: string): Promise<{ id: string | null; version: number; config: MarginConfig; rules: MarginRule[] }> {
+export async function publishedMarginSet(
+  tx: Tx,
+  tenantId: string,
+): Promise<{ id: string | null; version: number; config: MarginConfig; rules: MarginRule[] }> {
   const [row] = await tx
     .select()
     .from(marginRuleSets)
@@ -31,7 +49,12 @@ export async function publishedMarginSet(tx: Tx, tenantId: string): Promise<{ id
     .orderBy(desc(marginRuleSets.version))
     .limit(1);
   if (!row) return { id: null, version: 0, config: DEFAULT_MARGIN_CONFIG, rules: [] };
-  return { id: row.id, version: row.version, config: { ...DEFAULT_MARGIN_CONFIG, ...(row.config as Partial<MarginConfig>) }, rules: row.rules as MarginRule[] };
+  return {
+    id: row.id,
+    version: row.version,
+    config: { ...DEFAULT_MARGIN_CONFIG, ...(row.config as Partial<MarginConfig>) },
+    rules: row.rules as MarginRule[],
+  };
 }
 
 /** Unit price for a quantity from price tiers (highest minQty ≤ qty; falls back to the first tier). */
@@ -47,7 +70,13 @@ export interface CostOverrides {
   quantity?: number;
   items?: CostInput[]; // manual lines override automatic ones with the same key
   freightMode?: string | null;
-  packing?: { cartonCount: number; cartonLengthCm: string; cartonWidthCm: string; cartonHeightCm: string; cartonGrossWeightKg: string } | null;
+  packing?: {
+    cartonCount: number;
+    cartonLengthCm: string;
+    cartonWidthCm: string;
+    cartonHeightCm: string;
+    cartonGrossWeightKg: string;
+  } | null;
   origin?: string;
   destination?: string;
   dutyRateType?: string | null;
@@ -67,11 +96,29 @@ export interface EstimateResult {
  * available evidence (verified > estimated), stores it as a new cost_calculations
  * row (never overwriting previous ones) and a pricing snapshot.
  */
-export async function estimateForCandidate(tx: Tx, tenantId: string, candidateId: string, userId: string | null, o: CostOverrides = {}): Promise<EstimateResult> {
-  const [cand] = await tx.select().from(requestCandidates).where(eq(requestCandidates.id, candidateId)).limit(1);
+export async function estimateForCandidate(
+  tx: Tx,
+  tenantId: string,
+  candidateId: string,
+  userId: string | null,
+  o: CostOverrides = {},
+): Promise<EstimateResult> {
+  const [cand] = await tx
+    .select()
+    .from(requestCandidates)
+    .where(eq(requestCandidates.id, candidateId))
+    .limit(1);
   if (!cand) throw notFound('후보를 찾을 수 없습니다.');
-  const [listing] = await tx.select().from(sourceListings).where(eq(sourceListings.id, cand.listingId)).limit(1);
-  const [req] = await tx.select().from(sourcingRequests).where(eq(sourcingRequests.id, cand.requestId)).limit(1);
+  const [listing] = await tx
+    .select()
+    .from(sourceListings)
+    .where(eq(sourceListings.id, cand.listingId))
+    .limit(1);
+  const [req] = await tx
+    .select()
+    .from(sourcingRequests)
+    .where(eq(sourcingRequests.id, cand.requestId))
+    .limit(1);
   if (!listing || !req) throw notFound();
   const pricing = await getPublished(tx, tenantId, 'pricing');
   const search = await getPublished(tx, tenantId, 'search');
@@ -82,29 +129,65 @@ export async function estimateForCandidate(tx: Tx, tenantId: string, candidateId
   const items: CostInput[] = [];
   // Product cost: internal recommendation cost > verified supplier price > list/tier price
   if (cand.isInternalRecommendation && cand.internalCost) {
-    items.push({ key: 'product_cost', amount: cand.internalCost, currency: listing.currency, basis: 'PER_UNIT', source: 'INTERNAL_RECOMMENDATION', verification: 'PARTNER_VERIFIED' });
+    items.push({
+      key: 'product_cost',
+      amount: cand.internalCost,
+      currency: listing.currency,
+      basis: 'PER_UNIT',
+      source: 'INTERNAL_RECOMMENDATION',
+      verification: 'PARTNER_VERIFIED',
+    });
   } else if (listing.supplierVerifiedPrice) {
-    items.push({ key: 'product_cost', amount: listing.supplierVerifiedPrice, currency: listing.currency, basis: 'PER_UNIT', source: `SUPPLIER_VERIFIED:${listing.connector}`, verification: 'PARTNER_VERIFIED' });
+    items.push({
+      key: 'product_cost',
+      amount: listing.supplierVerifiedPrice,
+      currency: listing.currency,
+      basis: 'PER_UNIT',
+      source: `SUPPLIER_VERIFIED:${listing.connector}`,
+      verification: 'PARTNER_VERIFIED',
+    });
   } else {
     const p = tierPrice(listing.priceTiers, qty) ?? listing.supplierListPrice;
-    if (p) items.push({ key: 'product_cost', amount: p, currency: listing.currency, basis: 'PER_UNIT', source: `LISTING:${listing.connector}`, verification: listing.isDevMock ? 'UNVERIFIED' : 'AI_ESTIMATE' });
+    if (p)
+      items.push({
+        key: 'product_cost',
+        amount: p,
+        currency: listing.currency,
+        basis: 'PER_UNIT',
+        source: `LISTING:${listing.connector}`,
+        verification: listing.isDevMock ? 'UNVERIFIED' : 'AI_ESTIMATE',
+      });
   }
 
   // Freight: forwarder-confirmed quote for the project > engine with rate table (needs packing data)
   let freight: EstimateResult['freight'] = null;
   const pk = o.packing ?? packingFromListing(listing.packaging, qty);
-  const [product] = req.productId ? await tx.select().from(products).where(eq(products.id, req.productId)).limit(1) : [];
+  const [product] = req.productId
+    ? await tx.select().from(products).where(eq(products.id, req.productId)).limit(1)
+    : [];
   const attrs = product ? effectiveAttributes(product) : null;
   const [verifiedFreight] = req.projectId
     ? await tx
         .select()
         .from(freightQuotes)
-        .where(and(eq(freightQuotes.projectId, req.projectId), sql`${freightQuotes.kind} in ('PARTNER_VERIFIED','ACTUAL')`))
+        .where(
+          and(
+            eq(freightQuotes.projectId, req.projectId),
+            sql`${freightQuotes.kind} in ('PARTNER_VERIFIED','ACTUAL')`,
+          ),
+        )
         .orderBy(desc(freightQuotes.createdAt))
         .limit(1)
     : [];
   if (verifiedFreight) {
-    items.push({ key: 'international_freight', amount: verifiedFreight.total, currency: verifiedFreight.currency, basis: 'TOTAL', source: `FORWARDER:${verifiedFreight.providerName}`, verification: verifiedFreight.kind === 'ACTUAL' ? 'ACTUAL' : 'PARTNER_VERIFIED' });
+    items.push({
+      key: 'international_freight',
+      amount: verifiedFreight.total,
+      currency: verifiedFreight.currency,
+      basis: 'TOTAL',
+      source: `FORWARDER:${verifiedFreight.providerName}`,
+      verification: verifiedFreight.kind === 'ACTUAL' ? 'ACTUAL' : 'PARTNER_VERIFIED',
+    });
   } else if (pk) {
     const rateRows = await tx.select().from(freightRates).where(eq(freightRates.tenantId, tenantId));
     const rates: FreightRate[] = rateRows.map((r) => ({
@@ -141,9 +224,18 @@ export async function estimateForCandidate(tx: Tx, tenantId: string, candidateId
       baseCurrency: base,
       fx,
     });
-    const chosen = freight.options.find((x) => x.mode === (o.freightMode ?? freight!.recommended) && x.status === 'PRICED');
+    const chosen = freight.options.find(
+      (x) => x.mode === (o.freightMode ?? freight!.recommended) && x.status === 'PRICED',
+    );
     if (chosen?.costOriginal && chosen.currency && chosen.source && chosen.verification) {
-      items.push({ key: 'international_freight', amount: chosen.costOriginal, currency: chosen.currency, basis: 'TOTAL', source: `${chosen.source}:${chosen.rate?.providerName ?? chosen.mode}`, verification: chosen.verification });
+      items.push({
+        key: 'international_freight',
+        amount: chosen.costOriginal,
+        currency: chosen.currency,
+        basis: 'TOTAL',
+        source: `${chosen.source}:${chosen.rate?.providerName ?? chosen.mode}`,
+        verification: chosen.verification,
+      });
     }
   }
 
@@ -158,7 +250,15 @@ export async function estimateForCandidate(tx: Tx, tenantId: string, candidateId
       certTotal = certTotal.add(amt);
       if (!c.verifiedCost && !c.actualCost) certVer = 'AI_ESTIMATE';
     }
-    if (certTotal.gt(0)) items.push({ key: 'certification', amount: certTotal.toString(), currency: 'KRW', basis: 'TOTAL', source: 'COMPLIANCE_CHECKS', verification: certVer });
+    if (certTotal.gt(0))
+      items.push({
+        key: 'certification',
+        amount: certTotal.toString(),
+        currency: 'KRW',
+        basis: 'TOTAL',
+        source: 'COMPLIANCE_CHECKS',
+        verification: certVer,
+      });
   }
 
   // Manual overrides replace automatic lines with the same key.
@@ -169,18 +269,31 @@ export async function estimateForCandidate(tx: Tx, tenantId: string, candidateId
   }
 
   // Duty from HS (actual > verified > estimated) and official tariff data only.
-  const [hs] = product ? await tx.select().from(hsClassifications).where(eq(hsClassifications.productId, product.id)).limit(1) : [];
+  const [hs] = product
+    ? await tx.select().from(hsClassifications).where(eq(hsClassifications.productId, product.id)).limit(1)
+    : [];
   const hsCode = hs?.actualHs ?? hs?.verifiedHs ?? hs?.estimatedHs ?? null;
   const tariffs = await tariffOptions(tx, tenantId, hsCode);
   const tariff = bestTariff(tariffs, o.dutyRateType ?? hs?.selectedRateType);
-  const dutyNote = !hsCode ? 'HS 코드 미확정' : !tariff ? `HS ${hsCode} 관세율 데이터 없음` : `${tariff.rateType} ${tariff.ratePct}%${tariff.requiresCertificateOfOrigin ? ' (원산지증명서 필요)' : ''}${tariff.demo ? ' · 데모 데이터' : ''}`;
+  const dutyNote = !hsCode
+    ? 'HS 코드 미확정'
+    : !tariff
+      ? `HS ${hsCode} 관세율 데이터 없음`
+      : `${tariff.rateType} ${tariff.ratePct}%${tariff.requiresCertificateOfOrigin ? ' (원산지증명서 필요)' : ''}${tariff.demo ? ' · 데모 데이터' : ''}`;
 
   const landed = calculateLandedCost({
     quantity: qty,
     baseCurrency: base,
     items,
     duty: tariff
-      ? { ratePct: tariff.ratePct, rateType: tariff.rateType, hsCode, source: tariff.source, verification: hs?.verifiedHs || hs?.actualHs ? (tariff.verification as VerificationStatus) : 'AI_ESTIMATE' }
+      ? {
+          ratePct: tariff.ratePct,
+          rateType: tariff.rateType,
+          hsCode,
+          source: tariff.source,
+          verification:
+            hs?.verifiedHs || hs?.actualHs ? (tariff.verification as VerificationStatus) : 'AI_ESTIMATE',
+        }
       : { ratePct: null, source: 'NONE', verification: 'UNVERIFIED', hsCode },
     vatPct: pricing.vatPct,
     vatRecoverable: pricing.vatRecoverable,
@@ -188,7 +301,10 @@ export async function estimateForCandidate(tx: Tx, tenantId: string, candidateId
     certificationAllocation: pricing.certificationAllocation,
   });
 
-  const [prev] = await tx.select({ v: sql<number>`coalesce(max(${costCalculations.version}),0)::int` }).from(costCalculations).where(eq(costCalculations.candidateId, candidateId));
+  const [prev] = await tx
+    .select({ v: sql<number>`coalesce(max(${costCalculations.version}),0)::int` })
+    .from(costCalculations)
+    .where(eq(costCalculations.candidateId, candidateId));
   const [calc] = await tx
     .insert(costCalculations)
     .values({
@@ -232,9 +348,23 @@ export async function estimateForCandidate(tx: Tx, tenantId: string, candidateId
   let snapshotId: string | null = null;
   if (landed.lines.some((l) => l.key === 'product_cost')) {
     const margin = await publishedMarginSet(tx, tenantId);
-    const [project] = req.projectId ? await tx.select({ companyId: sourcingProjects.companyId }).from(sourcingProjects).where(eq(sourcingProjects.id, req.projectId)).limit(1) : [];
-    const [company] = project?.companyId ? await tx.select({ tier: companies.tier }).from(companies).where(eq(companies.id, project.companyId)).limit(1) : [];
-    const components = landed.lines.filter((l) => l.includedInLandedCost).map((l) => ({ component: l.component, totalCostBase: l.totalBase }));
+    const [project] = req.projectId
+      ? await tx
+          .select({ companyId: sourcingProjects.companyId })
+          .from(sourcingProjects)
+          .where(eq(sourcingProjects.id, req.projectId))
+          .limit(1)
+      : [];
+    const [company] = project?.companyId
+      ? await tx
+          .select({ tier: companies.tier })
+          .from(companies)
+          .where(eq(companies.id, project.companyId))
+          .limit(1)
+      : [];
+    const components = landed.lines
+      .filter((l) => l.includedInLandedCost)
+      .map((l) => ({ component: l.component, totalCostBase: l.totalBase }));
     price = calculatePrice(
       components,
       qty,
@@ -276,7 +406,10 @@ export async function estimateForCandidate(tx: Tx, tenantId: string, candidateId
       .returning({ id: pricingSnapshots.id });
     snapshotId = snap!.id;
   }
-  await tx.update(requestCandidates).set({ unitPriceBase: landed.perUnitLandedCostBase, updatedAt: new Date() }).where(eq(requestCandidates.id, candidateId));
+  await tx
+    .update(requestCandidates)
+    .set({ unitPriceBase: landed.perUnitLandedCostBase, updatedAt: new Date() })
+    .where(eq(requestCandidates.id, candidateId));
   return { calculationId: calc!.id, landed, price, freight, dutyNote, pricingSnapshotId: snapshotId };
 }
 

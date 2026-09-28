@@ -17,7 +17,9 @@ export default async function PolicyPage({ params }: { params: Promise<{ type: s
   return (
     <article className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
       <h1 className="text-2xl font-bold tracking-tight">{p.title}</h1>
-      <p className="mt-1 text-xs text-ink-muted">버전 {p.version} · 시행 {formatDate(p.publishedAt)}</p>
+      <p className="mt-1 text-xs text-ink-muted">
+        버전 {p.version} · 시행 {formatDate(p.publishedAt)}
+      </p>
       <div className="mt-8 whitespace-pre-line text-[15px] leading-relaxed text-ink-soft">{p.body}</div>
     </article>
   );

@@ -18,7 +18,10 @@ export const companies = pgTable(
     categories: jsonb('categories').$type<string[]>().notNull().default([]),
     taxInvoiceEmail: text('tax_invoice_email').notNull().default(''),
     paymentTerms: text('payment_terms').notNull().default(''),
-    preferences: jsonb('preferences').$type<{ targetMarginPct?: string; preferredFreight?: string; categories?: string[] }>().notNull().default({}),
+    preferences: jsonb('preferences')
+      .$type<{ targetMarginPct?: string; preferredFreight?: string; categories?: string[] }>()
+      .notNull()
+      .default({}),
     tier: text('tier').notNull().default('STANDARD'),
     creditLevel: text('credit_level').notNull().default('NORMAL'),
     warnings: jsonb('warnings').$type<string[]>().notNull().default([]),
@@ -70,12 +73,21 @@ export const sourcingProjects = pgTable(
     ownerUserId: uuid('owner_user_id'),
     stage: text('stage').notNull().default('REQUESTED'),
     status: text('status').notNull().default('OPEN'), // OPEN | ON_HOLD | CLOSED
-    attention: jsonb('attention').$type<Array<{ kind: string; message: string; since: string }>>().notNull().default([]),
-    stageHistory: jsonb('stage_history').$type<Array<{ stage: string; at: string; by?: string | null }>>().notNull().default([]),
+    attention: jsonb('attention')
+      .$type<Array<{ kind: string; message: string; since: string }>>()
+      .notNull()
+      .default([]),
+    stageHistory: jsonb('stage_history')
+      .$type<Array<{ stage: string; at: string; by?: string | null }>>()
+      .notNull()
+      .default([]),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [uniqueIndex('projects_code_uq').on(t.tenantId, t.code), index('projects_stage_idx').on(t.tenantId, t.stage)],
+  (t) => [
+    uniqueIndex('projects_code_uq').on(t.tenantId, t.code),
+    index('projects_stage_idx').on(t.tenantId, t.stage),
+  ],
 );
 
 export const sourcingRequests = pgTable(
@@ -101,16 +113,36 @@ export const sourcingRequests = pgTable(
     targetSellingPriceKrw: money('target_selling_price_krw'),
     desiredLeadTimeDays: integer('desired_lead_time_days'),
     options: jsonb('options')
-      .$type<{ oem?: boolean; logoPrint?: boolean; packageChange?: boolean; certificationNeeded?: 'YES' | 'NO' | 'UNSURE'; qualityLevel?: string; colors?: string; sizes?: string; notes?: string }>()
+      .$type<{
+        oem?: boolean;
+        logoPrint?: boolean;
+        packageChange?: boolean;
+        certificationNeeded?: 'YES' | 'NO' | 'UNSURE';
+        qualityLevel?: string;
+        colors?: string;
+        sizes?: string;
+        notes?: string;
+      }>()
       .notNull()
       .default({}),
     status: text('status').notNull().default('RECEIVED'), // RECEIVED | ANALYZING | READY | FAILED
-    progress: jsonb('progress').$type<Record<string, { status: 'PENDING' | 'RUNNING' | 'DONE' | 'FAILED' | 'SKIPPED'; message?: string; at?: string }>>().notNull().default({}),
+    progress: jsonb('progress')
+      .$type<
+        Record<
+          string,
+          { status: 'PENDING' | 'RUNNING' | 'DONE' | 'FAILED' | 'SKIPPED'; message?: string; at?: string }
+        >
+      >()
+      .notNull()
+      .default({}),
     productId: uuid('product_id'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [index('requests_project_idx').on(t.tenantId, t.projectId), index('requests_created_idx').on(t.tenantId, t.createdAt)],
+  (t) => [
+    index('requests_project_idx').on(t.tenantId, t.projectId),
+    index('requests_created_idx').on(t.tenantId, t.createdAt),
+  ],
 );
 
 // ─────────────────────────── Products ───────────────────────────
@@ -137,7 +169,10 @@ export const products = pgTable(
     hsCodeVerified: text('hs_code_verified'),
     hsCodeActual: text('hs_code_actual'),
     passport: jsonb('passport').$type<Record<string, unknown>>().notNull().default({}),
-    risk: jsonb('risk').$type<{ overall: string; items: Array<{ dimension: string; level: string; reasons: string[] }> }>(),
+    risk: jsonb('risk').$type<{
+      overall: string;
+      items: Array<{ dimension: string; level: string; reasons: string[] }>;
+    }>(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -172,7 +207,10 @@ export const productImages = pgTable(
     analysis: jsonb('analysis').$type<Record<string, unknown>>().notNull().default({}),
     createdAt: createdAt(),
   },
-  (t) => [index('product_images_sha_idx').on(t.tenantId, t.sha256), index('product_images_phash_idx').on(t.tenantId, t.phash)],
+  (t) => [
+    index('product_images_sha_idx').on(t.tenantId, t.sha256),
+    index('product_images_phash_idx').on(t.tenantId, t.phash),
+  ],
 );
 
 export const productEmbeddings = pgTable(
@@ -200,7 +238,10 @@ export const productClusters = pgTable('product_clusters', {
   lowestPrice: money('lowest_price'),
   medianPrice: money('median_price'),
   highestPrice: money('highest_price'),
-  moqDistribution: jsonb('moq_distribution').$type<{ min: number | null; median: number | null; max: number | null }>().notNull().default({ min: null, median: null, max: null }),
+  moqDistribution: jsonb('moq_distribution')
+    .$type<{ min: number | null; median: number | null; max: number | null }>()
+    .notNull()
+    .default({ min: null, median: null, max: null }),
   avgSellerQuality: real('avg_seller_quality'),
   reasons: jsonb('reasons').$type<string[]>().notNull().default([]),
   createdAt: createdAt(),
@@ -233,11 +274,23 @@ export const suppliers = pgTable(
     avgResponseHours: real('avg_response_hours'),
     typicalMoq: integer('typical_moq'),
     oemSupported: boolean('oem_supported'),
-    certifications: jsonb('certifications').$type<Array<{ name: string; number?: string; validUntil?: string; fileId?: string }>>().notNull().default([]),
+    certifications: jsonb('certifications')
+      .$type<Array<{ name: string; number?: string; validUntil?: string; fileId?: string }>>()
+      .notNull()
+      .default([]),
     bankInfo: jsonb('bank_info').$type<Record<string, string>>().notNull().default({}),
     externalRefs: jsonb('external_refs').$type<Record<string, string>>().notNull().default({}),
     metrics: jsonb('metrics')
-      .$type<{ orderCount?: number; sampleCount?: number; claimCount?: number; refundCount?: number; lateDeliveryCount?: number; qualityScore?: number; communicationScore?: number; reliabilityScore?: number }>()
+      .$type<{
+        orderCount?: number;
+        sampleCount?: number;
+        claimCount?: number;
+        refundCount?: number;
+        lateDeliveryCount?: number;
+        qualityScore?: number;
+        communicationScore?: number;
+        reliabilityScore?: number;
+      }>()
       .notNull()
       .default({}),
     riskFlags: jsonb('risk_flags').$type<string[]>().notNull().default([]),
@@ -299,7 +352,10 @@ export const sourceListings = pgTable(
     model: text('model').notNull().default(''),
     currency: text('currency').notNull().default('CNY'),
     /** Price tiers (qty ≥ minQty → unitPrice). Amounts are decimal strings. */
-    priceTiers: jsonb('price_tiers').$type<Array<{ minQty: number; unitPrice: string }>>().notNull().default([]),
+    priceTiers: jsonb('price_tiers')
+      .$type<Array<{ minQty: number; unitPrice: string }>>()
+      .notNull()
+      .default([]),
     supplierListPrice: money('supplier_list_price'),
     supplierVerifiedPrice: money('supplier_verified_price'),
     moq: integer('moq'),
@@ -308,9 +364,19 @@ export const sourceListings = pgTable(
     imageFileIds: jsonb('image_file_ids').$type<string[]>().notNull().default([]),
     phash: text('phash'),
     specs: jsonb('specs').$type<Record<string, string>>().notNull().default({}),
-    salesMetrics: jsonb('sales_metrics').$type<{ sold30d?: number; reviews?: number; rating?: number; repurchaseRate?: number }>().notNull().default({}),
+    salesMetrics: jsonb('sales_metrics')
+      .$type<{ sold30d?: number; reviews?: number; rating?: number; repurchaseRate?: number }>()
+      .notNull()
+      .default({}),
     packaging: jsonb('packaging')
-      .$type<{ unitsPerCarton?: number; cartonL?: string; cartonW?: string; cartonH?: string; cartonGw?: string; cartonNw?: string }>()
+      .$type<{
+        unitsPerCarton?: number;
+        cartonL?: string;
+        cartonW?: string;
+        cartonH?: string;
+        cartonGw?: string;
+        cartonNw?: string;
+      }>()
       .notNull()
       .default({}),
     shippingOrigin: text('shipping_origin').notNull().default(''),
@@ -327,7 +393,9 @@ export const sourceListings = pgTable(
   },
   (t) => [
     index('listings_supplier_idx').on(t.tenantId, t.supplierId),
-    uniqueIndex('listings_external_uq').on(t.tenantId, t.connector, t.externalId).where(sql`${t.externalId} <> ''`),
+    uniqueIndex('listings_external_uq')
+      .on(t.tenantId, t.connector, t.externalId)
+      .where(sql`${t.externalId} <> ''`),
   ],
 );
 
@@ -359,7 +427,10 @@ export const requestCandidates = pgTable(
     clusterId: uuid('cluster_id'),
     score: real('score').notNull().default(0),
     coverage: real('coverage').notNull().default(0),
-    components: jsonb('components').$type<Array<{ key: string; label: string; score: number | null; weight: number; evidence: string }>>().notNull().default([]),
+    components: jsonb('components')
+      .$type<Array<{ key: string; label: string; score: number | null; weight: number; evidence: string }>>()
+      .notNull()
+      .default([]),
     weightsSnapshot: jsonb('weights_snapshot').$type<Record<string, number>>().notNull().default({}),
     tags: jsonb('tags').$type<string[]>().notNull().default([]),
     reasons: jsonb('reasons').$type<string[]>().notNull().default([]),
@@ -382,7 +453,10 @@ export const requestCandidates = pgTable(
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [uniqueIndex('request_candidates_uq').on(t.requestId, t.listingId), index('request_candidates_req_idx').on(t.tenantId, t.requestId)],
+  (t) => [
+    uniqueIndex('request_candidates_uq').on(t.requestId, t.listingId),
+    index('request_candidates_req_idx').on(t.tenantId, t.requestId),
+  ],
 );
 
 // ─────────────────────────── Domestic market intelligence ───────────────────────────
@@ -413,7 +487,10 @@ export const marketListings = pgTable(
     collectedAt: ts('collected_at').notNull().defaultNow(),
     expiresAt: ts('expires_at'),
   },
-  (t) => [index('market_listings_req_idx').on(t.tenantId, t.requestId), index('market_listings_ext_idx').on(t.tenantId, t.platform, t.externalId)],
+  (t) => [
+    index('market_listings_req_idx').on(t.tenantId, t.requestId),
+    index('market_listings_ext_idx').on(t.tenantId, t.platform, t.externalId),
+  ],
 );
 
 export const marketPriceHistory = pgTable(

@@ -113,7 +113,10 @@ export function emptyAttributes(): ProductAttributes {
  * sources disagree on a tri-state value the result becomes UNKNOWN (conflict
  * must be resolved by a human rather than silently picking one).
  */
-export function mergeAttributes(base: ProductAttributes, patch: Partial<ProductAttributes>): { merged: ProductAttributes; conflicts: string[] } {
+export function mergeAttributes(
+  base: ProductAttributes,
+  patch: Partial<ProductAttributes>,
+): { merged: ProductAttributes; conflicts: string[] } {
   const merged: ProductAttributes = { ...base };
   const conflicts: string[] = [];
   const record = merged as Record<string, unknown>;
@@ -146,13 +149,38 @@ export function mergeAttributes(base: ProductAttributes, patch: Partial<ProductA
 
 /** Very small keyword heuristics used only as a *signal* when no AI provider is configured. Results are marked low confidence. */
 const KEYWORD_SIGNALS: Array<{ attr: TriAttributeKey; words: string[] }> = [
-  { attr: 'battery', words: ['battery', 'rechargeable', 'mah', 'li-ion', 'lithium', '배터리', '충전식', '电池', '充电'] },
-  { attr: 'electrical', words: ['usb', 'electric', 'volt', 'watt', ' led', '전기', '전동', '충전', '电动', '电源', 'led '] },
+  {
+    attr: 'battery',
+    words: ['battery', 'rechargeable', 'mah', 'li-ion', 'lithium', '배터리', '충전식', '电池', '充电'],
+  },
+  {
+    attr: 'electrical',
+    words: ['usb', 'electric', 'volt', 'watt', ' led', '전기', '전동', '충전', '电动', '电源', 'led '],
+  },
   { attr: 'bluetooth', words: ['bluetooth', '블루투스', '蓝牙'] },
   { attr: 'wifi', words: ['wifi', 'wi-fi', '와이파이', '无线网'] },
   { attr: 'wireless', words: ['wireless', 'bluetooth', 'wifi', '무선', '无线', 'rf '] },
-  { attr: 'food_contact', words: ['cup', 'bottle', 'tumbler', 'kitchen', 'food', '컵', '텀블러', '식품', '주방', '水杯', '餐具', 'lunch box'] },
-  { attr: 'children_product', words: ['kids', 'child', 'baby', 'toy', '아동', '유아', '어린이', '장난감', '儿童', '玩具', '婴儿'] },
+  {
+    attr: 'food_contact',
+    words: [
+      'cup',
+      'bottle',
+      'tumbler',
+      'kitchen',
+      'food',
+      '컵',
+      '텀블러',
+      '식품',
+      '주방',
+      '水杯',
+      '餐具',
+      'lunch box',
+    ],
+  },
+  {
+    attr: 'children_product',
+    words: ['kids', 'child', 'baby', 'toy', '아동', '유아', '어린이', '장난감', '儿童', '玩具', '婴儿'],
+  },
   { attr: 'cosmetic', words: ['cosmetic', 'cream', 'lotion', '화장품', '크림', '化妆品'] },
   { attr: 'medical_claim', words: ['medical', 'therapy', '의료', '치료', '医疗'] },
   { attr: 'laser', words: ['laser', '레이저', '激光'] },

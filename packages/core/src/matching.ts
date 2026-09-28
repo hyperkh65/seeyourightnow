@@ -123,13 +123,19 @@ export function pairSimilarity(a: ClusterableListing, b: ClusterableListing) {
   return { embedding: emb, phash: ph, title, model, spec };
 }
 
-export function sameProduct(a: ClusterableListing, b: ClusterableListing, t: ClusterThresholds = DEFAULT_CLUSTER_THRESHOLDS): { same: boolean; reasons: string[] } {
+export function sameProduct(
+  a: ClusterableListing,
+  b: ClusterableListing,
+  t: ClusterThresholds = DEFAULT_CLUSTER_THRESHOLDS,
+): { same: boolean; reasons: string[] } {
   const s = pairSimilarity(a, b);
   const reasons: string[] = [];
   if (s.model === 0) return { same: false, reasons: ['모델번호 불일치'] };
   if (s.model === 1) reasons.push('모델번호 일치');
-  if (s.embedding !== null && s.embedding >= t.embedding) reasons.push(`이미지 임베딩 유사도 ${(s.embedding * 100).toFixed(0)}%`);
-  if (s.phash !== null && s.phash >= t.phash) reasons.push(`이미지 해시 유사도 ${(s.phash * 100).toFixed(0)}%`);
+  if (s.embedding !== null && s.embedding >= t.embedding)
+    reasons.push(`이미지 임베딩 유사도 ${(s.embedding * 100).toFixed(0)}%`);
+  if (s.phash !== null && s.phash >= t.phash)
+    reasons.push(`이미지 해시 유사도 ${(s.phash * 100).toFixed(0)}%`);
   const strongImage = reasons.some((r) => r.startsWith('이미지'));
   const titleOk = s.title >= t.title;
   if (titleOk) reasons.push(`제목 유사도 ${(s.title * 100).toFixed(0)}%`);
@@ -151,7 +157,10 @@ export interface ClusterStats {
 }
 
 /** Union-find clustering. Prices are compared only within the same currency. */
-export function clusterListings(items: ClusterableListing[], t: ClusterThresholds = DEFAULT_CLUSTER_THRESHOLDS): ClusterStats[] {
+export function clusterListings(
+  items: ClusterableListing[],
+  t: ClusterThresholds = DEFAULT_CLUSTER_THRESHOLDS,
+): ClusterStats[] {
   const parent = items.map((_, i) => i);
   const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i]!)));
   const reasonsByRoot = new Map<number, Set<string>>();
@@ -179,7 +188,10 @@ export function clusterListings(items: ClusterableListing[], t: ClusterThreshold
     const currency = currencies.length === 1 ? currencies[0]! : null;
     const prices = currency ? members.map((m) => m.unitPrice).filter((p): p is string => !!p) : [];
     const sortedPrices = prices.map((p) => new D(p)).sort((a, b) => a.comparedTo(b));
-    const moqs = members.map((m) => m.moq).filter((m): m is number => typeof m === 'number').sort((a, b) => a - b);
+    const moqs = members
+      .map((m) => m.moq)
+      .filter((m): m is number => typeof m === 'number')
+      .sort((a, b) => a - b);
     const quality = members.map((m) => m.sellerQuality).filter((q): q is number => typeof q === 'number');
     return {
       memberIds: members.map((m) => m.id),
@@ -207,8 +219,14 @@ export interface PriceAnomaly {
   message: string | null;
 }
 
-export function detectPriceAnomaly(price: string, clusterMedian: string | null, lowRatio = 0.5, highRatio = 2.5): PriceAnomaly {
-  if (!clusterMedian || new D(clusterMedian).isZero()) return { anomalous: false, ratioToMedian: null, message: null };
+export function detectPriceAnomaly(
+  price: string,
+  clusterMedian: string | null,
+  lowRatio = 0.5,
+  highRatio = 2.5,
+): PriceAnomaly {
+  if (!clusterMedian || new D(clusterMedian).isZero())
+    return { anomalous: false, ratioToMedian: null, message: null };
   const ratio = new D(price).div(clusterMedian);
   if (ratio.lt(lowRatio)) {
     return {
@@ -218,7 +236,11 @@ export function detectPriceAnomaly(price: string, clusterMedian: string | null, 
     };
   }
   if (ratio.gt(highRatio)) {
-    return { anomalous: true, ratioToMedian: ratio.toFixed(2), message: `동일 제품 중앙값 대비 ${ratio.toFixed(1)}배 높은 가격입니다.` };
+    return {
+      anomalous: true,
+      ratioToMedian: ratio.toFixed(2),
+      message: `동일 제품 중앙값 대비 ${ratio.toFixed(1)}배 높은 가격입니다.`,
+    };
   }
   return { anomalous: false, ratioToMedian: ratio.toFixed(2), message: null };
 }
@@ -302,7 +324,13 @@ export interface ScoredCandidate {
   id: string;
   total: number; // 0..100, weighted over components with data
   coverage: number; // share of weight that had data
-  components: Array<{ key: MatchComponent; label: string; score: number | null; weight: number; evidence: string }>;
+  components: Array<{
+    key: MatchComponent;
+    label: string;
+    score: number | null;
+    weight: number;
+    evidence: string;
+  }>;
   tags: MatchTag[];
   reasons: string[];
   cautions: string[];
@@ -332,10 +360,24 @@ export const MATCH_TAG_LABEL_KO: Record<MatchTag, string> = {
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
-function componentScores(c: CandidateInput, req: MatchRequest): Array<{ key: MatchComponent; score: number | null; evidence: string }> {
+function componentScores(
+  c: CandidateInput,
+  req: MatchRequest,
+): Array<{ key: MatchComponent; score: number | null; evidence: string }> {
   const out: Array<{ key: MatchComponent; score: number | null; evidence: string }> = [];
-  out.push({ key: 'image_match', score: c.imageSimilarity, evidence: c.imageSimilarity === null ? '이미지 비교 불가' : `이미지 유사도 ${(c.imageSimilarity * 100).toFixed(0)}%` });
-  out.push({ key: 'spec_match', score: c.specMatch, evidence: c.specMatch === null ? '스펙 정보 부족' : `스펙 ${(c.specMatch * 100).toFixed(0)}% 일치` });
+  out.push({
+    key: 'image_match',
+    score: c.imageSimilarity,
+    evidence:
+      c.imageSimilarity === null
+        ? '이미지 비교 불가'
+        : `이미지 유사도 ${(c.imageSimilarity * 100).toFixed(0)}%`,
+  });
+  out.push({
+    key: 'spec_match',
+    score: c.specMatch,
+    evidence: c.specMatch === null ? '스펙 정보 부족' : `스펙 ${(c.specMatch * 100).toFixed(0)}% 일치`,
+  });
 
   if (c.unitPriceBase && req.targetUnitPriceBase && !new D(req.targetUnitPriceBase).isZero()) {
     const ratio = new D(c.unitPriceBase).div(req.targetUnitPriceBase).toNumber();
@@ -348,12 +390,28 @@ function componentScores(c: CandidateInput, req: MatchRequest): Array<{ key: Mat
 
   if (c.moq !== null && req.quantity !== null) {
     const s = req.quantity >= c.moq ? 1 : clamp01(req.quantity / c.moq);
-    out.push({ key: 'moq_match', score: s, evidence: req.quantity >= c.moq ? `MOQ ${c.moq} 충족` : `MOQ ${c.moq} (희망 ${req.quantity})` });
+    out.push({
+      key: 'moq_match',
+      score: s,
+      evidence: req.quantity >= c.moq ? `MOQ ${c.moq} 충족` : `MOQ ${c.moq} (희망 ${req.quantity})`,
+    });
   } else {
     out.push({ key: 'moq_match', score: null, evidence: 'MOQ 정보 없음' });
   }
-  out.push({ key: 'supplier_reliability', score: c.supplierReliability, evidence: c.supplierReliability === null ? '공급자 정보 부족' : `신뢰도 ${(c.supplierReliability * 100).toFixed(0)}점` });
-  out.push({ key: 'quality_history', score: c.qualityHistory, evidence: c.qualityHistory === null ? '품질 이력 없음' : `품질 이력 ${(c.qualityHistory * 100).toFixed(0)}점` });
+  out.push({
+    key: 'supplier_reliability',
+    score: c.supplierReliability,
+    evidence:
+      c.supplierReliability === null
+        ? '공급자 정보 부족'
+        : `신뢰도 ${(c.supplierReliability * 100).toFixed(0)}점`,
+  });
+  out.push({
+    key: 'quality_history',
+    score: c.qualityHistory,
+    evidence:
+      c.qualityHistory === null ? '품질 이력 없음' : `품질 이력 ${(c.qualityHistory * 100).toFixed(0)}점`,
+  });
   if (c.leadTimeDays !== null) {
     const target = req.desiredLeadTimeDays ?? 30;
     const s = c.leadTimeDays <= target ? 1 : clamp01(1 - (c.leadTimeDays - target) / target);
@@ -364,11 +422,33 @@ function componentScores(c: CandidateInput, req: MatchRequest): Array<{ key: Mat
   out.push({
     key: 'oem',
     score: req.wantsOem ? (c.oemSupported === null ? null : c.oemSupported ? 1 : 0) : null,
-    evidence: !req.wantsOem ? 'OEM 불필요' : c.oemSupported === null ? 'OEM 가능 여부 미확인' : c.oemSupported ? 'OEM 가능' : 'OEM 불가',
+    evidence: !req.wantsOem
+      ? 'OEM 불필요'
+      : c.oemSupported === null
+        ? 'OEM 가능 여부 미확인'
+        : c.oemSupported
+          ? 'OEM 가능'
+          : 'OEM 불가',
   });
-  out.push({ key: 'compliance', score: c.complianceReadiness, evidence: c.complianceReadiness === null ? '인증 서류 미확인' : `인증 준비도 ${(c.complianceReadiness * 100).toFixed(0)}%` });
-  out.push({ key: 'logistics', score: c.logisticsScore, evidence: c.logisticsScore === null ? '물류 정보 없음' : `물류 점수 ${(c.logisticsScore * 100).toFixed(0)}` });
-  out.push({ key: 'communication', score: c.communication, evidence: c.communication === null ? '소통 이력 없음' : `응답 품질 ${(c.communication * 100).toFixed(0)}` });
+  out.push({
+    key: 'compliance',
+    score: c.complianceReadiness,
+    evidence:
+      c.complianceReadiness === null
+        ? '인증 서류 미확인'
+        : `인증 준비도 ${(c.complianceReadiness * 100).toFixed(0)}%`,
+  });
+  out.push({
+    key: 'logistics',
+    score: c.logisticsScore,
+    evidence:
+      c.logisticsScore === null ? '물류 정보 없음' : `물류 점수 ${(c.logisticsScore * 100).toFixed(0)}`,
+  });
+  out.push({
+    key: 'communication',
+    score: c.communication,
+    evidence: c.communication === null ? '소통 이력 없음' : `응답 품질 ${(c.communication * 100).toFixed(0)}`,
+  });
   out.push({
     key: 'past_orders',
     score: c.pastOrders === null ? null : clamp01(Math.log10(1 + c.pastOrders) / 2),
@@ -377,7 +457,12 @@ function componentScores(c: CandidateInput, req: MatchRequest): Array<{ key: Mat
   return out;
 }
 
-export function rankCandidates(candidates: CandidateInput[], req: MatchRequest, weights: MatchWeights = DEFAULT_MATCH_WEIGHTS, medianUnitPriceBase?: string | null): ScoredCandidate[] {
+export function rankCandidates(
+  candidates: CandidateInput[],
+  req: MatchRequest,
+  weights: MatchWeights = DEFAULT_MATCH_WEIGHTS,
+  medianUnitPriceBase?: string | null,
+): ScoredCandidate[] {
   const scored: ScoredCandidate[] = candidates.map((c) => {
     const comps = componentScores(c, req);
     let wsum = 0;
@@ -390,7 +475,13 @@ export function rankCandidates(candidates: CandidateInput[], req: MatchRequest, 
         wsum += w;
         acc += w * x.score;
       }
-      return { key: x.key, label: MATCH_COMPONENT_LABEL_KO[x.key], score: x.score, weight: w, evidence: x.evidence };
+      return {
+        key: x.key,
+        label: MATCH_COMPONENT_LABEL_KO[x.key],
+        score: x.score,
+        weight: w,
+        evidence: x.evidence,
+      };
     });
     const total = wsum > 0 ? (acc / wsum) * 100 : 0;
     const cautions: string[] = [];
@@ -405,7 +496,16 @@ export function rankCandidates(candidates: CandidateInput[], req: MatchRequest, 
       .sort((a, b) => b.weight - a.weight)
       .slice(0, 3)
       .map((x) => `${x.label}: ${x.evidence}`);
-    return { id: c.id, total: Math.round(total * 10) / 10, coverage: Math.round(coverage * 100) / 100, components, tags: [], reasons, cautions, pinned: !!c.pinned };
+    return {
+      id: c.id,
+      total: Math.round(total * 10) / 10,
+      coverage: Math.round(coverage * 100) / 100,
+      components,
+      tags: [],
+      reasons,
+      cautions,
+      pinned: !!c.pinned,
+    };
   });
 
   const byId = new Map(candidates.map((c) => [c.id, c]));
@@ -420,8 +520,16 @@ export function rankCandidates(candidates: CandidateInput[], req: MatchRequest, 
     const im = s.components.find((c) => c.key === 'image_match')?.score;
     return im === null || im === undefined || im >= 0.6;
   };
-  const priced = eligible.filter((s) => byId.get(s.id)?.unitPriceBase && imageOk(s) && !s.cautions.some((c) => c.includes('비정상적으로 낮은')));
-  tag('LOWEST_COST', [...priced].sort((a, b) => new D(byId.get(a.id)!.unitPriceBase!).comparedTo(byId.get(b.id)!.unitPriceBase!))[0]);
+  const priced = eligible.filter(
+    (s) =>
+      byId.get(s.id)?.unitPriceBase && imageOk(s) && !s.cautions.some((c) => c.includes('비정상적으로 낮은')),
+  );
+  tag(
+    'LOWEST_COST',
+    [...priced].sort((a, b) =>
+      new D(byId.get(a.id)!.unitPriceBase!).comparedTo(byId.get(b.id)!.unitPriceBase!),
+    )[0],
+  );
 
   const qualityScore = (s: ScoredCandidate) => {
     const q = s.components.find((c) => c.key === 'quality_history')?.score;
@@ -429,12 +537,42 @@ export function rankCandidates(candidates: CandidateInput[], req: MatchRequest, 
     if (q === null && r === null) return null;
     return ((q ?? r ?? 0) + (r ?? q ?? 0)) / 2;
   };
-  tag('BEST_QUALITY', [...eligible].filter((s) => qualityScore(s) !== null).sort((a, b) => qualityScore(b)! - qualityScore(a)!)[0]);
-  if (req.wantsOem) tag('BEST_FOR_OEM', [...eligible].filter((s) => byId.get(s.id)?.oemSupported).sort((a, b) => b.total - a.total)[0]);
-  tag('LOW_MOQ', [...eligible].filter((s) => byId.get(s.id)?.moq !== null).sort((a, b) => byId.get(a.id)!.moq! - byId.get(b.id)!.moq!)[0]);
-  tag('FASTEST_DELIVERY', [...eligible].filter((s) => byId.get(s.id)?.leadTimeDays !== null).sort((a, b) => byId.get(a.id)!.leadTimeDays! - byId.get(b.id)!.leadTimeDays!)[0]);
-  const privateTypes: SourceType[] = ['PRIVATE_NETWORK', 'DIRECT_FACTORY', 'INTERNAL_PRODUCT', 'LOCAL_PARTNER', 'MANUAL_PROPOSAL'];
-  tag('PRIVATE_NETWORK_RECOMMENDED', [...eligible].filter((s) => privateTypes.includes(byId.get(s.id)!.sourceType)).sort((a, b) => b.total - a.total)[0]);
+  tag(
+    'BEST_QUALITY',
+    [...eligible]
+      .filter((s) => qualityScore(s) !== null)
+      .sort((a, b) => qualityScore(b)! - qualityScore(a)!)[0],
+  );
+  if (req.wantsOem)
+    tag(
+      'BEST_FOR_OEM',
+      [...eligible].filter((s) => byId.get(s.id)?.oemSupported).sort((a, b) => b.total - a.total)[0],
+    );
+  tag(
+    'LOW_MOQ',
+    [...eligible]
+      .filter((s) => byId.get(s.id)?.moq !== null)
+      .sort((a, b) => byId.get(a.id)!.moq! - byId.get(b.id)!.moq!)[0],
+  );
+  tag(
+    'FASTEST_DELIVERY',
+    [...eligible]
+      .filter((s) => byId.get(s.id)?.leadTimeDays !== null)
+      .sort((a, b) => byId.get(a.id)!.leadTimeDays! - byId.get(b.id)!.leadTimeDays!)[0],
+  );
+  const privateTypes: SourceType[] = [
+    'PRIVATE_NETWORK',
+    'DIRECT_FACTORY',
+    'INTERNAL_PRODUCT',
+    'LOCAL_PARTNER',
+    'MANUAL_PROPOSAL',
+  ];
+  tag(
+    'PRIVATE_NETWORK_RECOMMENDED',
+    [...eligible]
+      .filter((s) => privateTypes.includes(byId.get(s.id)!.sourceType))
+      .sort((a, b) => b.total - a.total)[0],
+  );
 
   return scored.sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.total - a.total);
 }

@@ -32,15 +32,32 @@ function MfaForm() {
         <ShieldCheck className="h-6 w-6" />
       </div>
       <h1 className="mt-4 text-center text-xl font-bold">2단계 인증</h1>
-      <p className="mt-1 text-center text-sm text-ink-muted">인증 앱에 표시된 6자리 코드 또는 복구 코드를 입력하세요.</p>
+      <p className="mt-1 text-center text-sm text-ink-muted">
+        인증 앱에 표시된 6자리 코드 또는 복구 코드를 입력하세요.
+      </p>
       <Card className="mt-6">
         <CardBody>
-          <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); void submit(); }}>
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void submit();
+            }}
+          >
             <Field label="인증 코드">
-              <Input autoFocus inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} className="text-center text-lg tracking-[0.3em]" />
+              <Input
+                autoFocus
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                className="text-center text-lg tracking-[0.3em]"
+              />
             </Field>
             {error && <Alert tone="danger">{error}</Alert>}
-            <Button type="submit" className="w-full" loading={busy} disabled={code.length < 6}>확인</Button>
+            <Button type="submit" className="w-full" loading={busy} disabled={code.length < 6}>
+              확인
+            </Button>
           </form>
         </CardBody>
       </Card>

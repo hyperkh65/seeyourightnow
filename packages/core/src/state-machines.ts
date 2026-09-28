@@ -29,7 +29,11 @@ export const CONTRACT_TRANSITIONS: Transition<ContractStatus>[] = [
   { from: ['CUSTOMER_REVIEW'], to: 'CUSTOMER_APPROVED', by: ['CUSTOMER'] },
   { from: ['CUSTOMER_APPROVED'], to: 'COMPANY_APPROVED', by: ['STAFF'] },
   { from: ['COMPANY_APPROVED'], to: 'EFFECTIVE', by: ['SYSTEM', 'STAFF'] },
-  { from: ['DRAFT', 'CUSTOMER_REVIEW', 'CUSTOMER_APPROVED', 'COMPANY_APPROVED'], to: 'CANCELLED', by: ['STAFF'] },
+  {
+    from: ['DRAFT', 'CUSTOMER_REVIEW', 'CUSTOMER_APPROVED', 'COMPANY_APPROVED'],
+    to: 'CANCELLED',
+    by: ['STAFF'],
+  },
 ];
 
 export function canTransition<S extends string>(table: Transition<S>[], from: S, to: S, by: Actor): boolean {
@@ -45,7 +49,16 @@ export function isQuotationImmutable(status: QuotationStatus): boolean {
   return status !== 'DRAFT' && status !== 'ADMIN_REVIEW';
 }
 
-export const PRODUCTION_STATUSES = ['NOT_STARTED', 'MATERIALS', 'IN_PRODUCTION', 'QC', 'PACKING', 'COMPLETED', 'DELAYED', 'ON_HOLD'] as const;
+export const PRODUCTION_STATUSES = [
+  'NOT_STARTED',
+  'MATERIALS',
+  'IN_PRODUCTION',
+  'QC',
+  'PACKING',
+  'COMPLETED',
+  'DELAYED',
+  'ON_HOLD',
+] as const;
 export type ProductionStatus = (typeof PRODUCTION_STATUSES)[number];
 
 export const PRODUCTION_STATUS_LABEL_KO: Record<ProductionStatus, string> = {

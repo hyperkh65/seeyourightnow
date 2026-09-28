@@ -81,7 +81,11 @@ const envSchema = z.object({
   RUN_WORKER_IN_PROCESS: bool,
 });
 
-export type Config = z.infer<typeof envSchema> & { cookieSecure: boolean; signingKey: string; masterKey: Buffer | null };
+export type Config = z.infer<typeof envSchema> & {
+  cookieSecure: boolean;
+  signingKey: string;
+  masterKey: Buffer | null;
+};
 
 function load(): Config {
   const parsed = envSchema.safeParse(process.env);
@@ -93,7 +97,8 @@ function load(): Config {
   const isProd = env.NODE_ENV === 'production';
   if (isProd && env.DEV_MODE) throw new Error('DEV_MODE must not be enabled in production');
   if (isProd && !env.APP_SIGNING_KEY) throw new Error('APP_SIGNING_KEY is required in production');
-  if (isProd && env.SECRETS_BACKEND === 'BUILTIN' && !env.SECRETS_MASTER_KEY) throw new Error('SECRETS_MASTER_KEY is required in production');
+  if (isProd && env.SECRETS_BACKEND === 'BUILTIN' && !env.SECRETS_MASTER_KEY)
+    throw new Error('SECRETS_MASTER_KEY is required in production');
   let masterKey: Buffer | null = null;
   if (env.SECRETS_MASTER_KEY) {
     masterKey = Buffer.from(env.SECRETS_MASTER_KEY, 'base64');

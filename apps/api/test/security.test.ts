@@ -26,7 +26,15 @@ describe('RBAC, CSRF, step-up, anonymous access', () => {
 
   it('sales cannot change margin rules; owner needs step-up', async () => {
     const sales = await client('demo.localhost', 'sales@demo.local');
-    const body = { config: { defaults: { PRODUCT: '15', FREIGHT: '5', INSPECTION: '10', SERVICE: '10', DOMESTIC_DELIVERY: '5' }, rounding: { mode: 'UP', step: '10' }, taxPassThrough: true }, rules: [], note: 'test' };
+    const body = {
+      config: {
+        defaults: { PRODUCT: '15', FREIGHT: '5', INSPECTION: '10', SERVICE: '10', DOMESTIC_DELIVERY: '5' },
+        rounding: { mode: 'UP', step: '10' },
+        taxPassThrough: true,
+      },
+      rules: [],
+      note: 'test',
+    };
     expect((await sales.put('/admin/margin/draft', body)).statusCode).toBe(403);
     const owner = await client('demo.localhost', 'owner@demo.local');
     // Fresh password login grants step-up; simulate an aged session by forcing a new one without step-up
@@ -60,14 +68,17 @@ describe('RBAC, CSRF, step-up, anonymous access', () => {
     const { requestId, accessToken } = json<{ requestId: string; accessToken: string }>(r);
     expect(accessToken).toBeTruthy();
     expect((await anon.get(`/sourcing/requests/${requestId}/status`)).statusCode).toBe(404);
-    expect((await anon.get(`/sourcing/requests/${requestId}/status?token=${accessToken}`)).statusCode).toBe(200);
+    expect((await anon.get(`/sourcing/requests/${requestId}/status?token=${accessToken}`)).statusCode).toBe(
+      200,
+    );
     const other = await client('demo.localhost', 'buyer@demo.local');
     expect((await other.get(`/sourcing/requests/${requestId}/result`)).statusCode).toBe(404);
   });
 
   it('locks an account after repeated failed logins', async () => {
     const c = await client('demo.localhost');
-    for (let i = 0; i < 5; i++) await c.post('/auth/login', { email: 'finance@demo.local', password: 'nope-nope-nope' });
+    for (let i = 0; i < 5; i++)
+      await c.post('/auth/login', { email: 'finance@demo.local', password: 'nope-nope-nope' });
     const r = await c.post('/auth/login', { email: 'finance@demo.local', password: PASSWORD });
     expect(r.statusCode).toBe(423);
   });
@@ -92,8 +103,15 @@ describe('RBAC, CSRF, step-up, anonymous access', () => {
     const r = await d.staff.app.inject({
       method: 'POST',
       url: '/api/v1/files',
-      headers: { 'x-forwarded-host': 'demo.localhost', origin: 'http://demo.localhost:3000', 'x-csrf-token': d.staff.csrf, cookie: [...d.staff.cookies].map(([k, v]) => `${k}=${v}`).join('; '), 'content-type': 'multipart/form-data; boundary=XX' },
-      payload: '--XX\r\nContent-Disposition: form-data; name="purpose"\r\n\r\nATTACHMENT\r\n--XX\r\nContent-Disposition: form-data; name="file"; filename="evil.pdf"\r\nContent-Type: application/pdf\r\n\r\n<script>alert(1)</script>\r\n--XX--\r\n',
+      headers: {
+        'x-forwarded-host': 'demo.localhost',
+        origin: 'http://demo.localhost:3000',
+        'x-csrf-token': d.staff.csrf,
+        cookie: [...d.staff.cookies].map(([k, v]) => `${k}=${v}`).join('; '),
+        'content-type': 'multipart/form-data; boundary=XX',
+      },
+      payload:
+        '--XX\r\nContent-Disposition: form-data; name="purpose"\r\n\r\nATTACHMENT\r\n--XX\r\nContent-Disposition: form-data; name="file"; filename="evil.pdf"\r\nContent-Type: application/pdf\r\n\r\n<script>alert(1)</script>\r\n--XX--\r\n',
     });
     expect(r.statusCode).toBe(415);
   });
@@ -104,7 +122,11 @@ describe('rate limiting', () => {
     const c = await client('demo.localhost');
     let limited = false;
     for (let i = 0; i < 12; i++) {
-      const r = await c.post('/auth/login', { email: 'x@demo.local', password: 'wrong-password' }, { 'x-test-ratelimit': '1' });
+      const r = await c.post(
+        '/auth/login',
+        { email: 'x@demo.local', password: 'wrong-password' },
+        { 'x-test-ratelimit': '1' },
+      );
       if (r.statusCode === 429) limited = true;
     }
     expect(limited).toBe(true);

@@ -67,14 +67,38 @@ describe('landed cost', () => {
     fx,
     certificationAllocation: 'FULL_ON_ORDER' as const,
     items: [
-      { key: 'product_cost' as const, amount: '10.00', currency: 'CNY', basis: 'PER_UNIT' as const, source: 'supplier', verification: 'PARTNER_VERIFIED' as const },
-      { key: 'international_freight' as const, amount: '500', currency: 'USD', basis: 'TOTAL' as const, source: 'forwarder', verification: 'PARTNER_VERIFIED' as const },
-      { key: 'certification' as const, amount: '2000000', currency: 'KRW', basis: 'TOTAL' as const, source: 'lab', verification: 'AI_ESTIMATE' as const },
+      {
+        key: 'product_cost' as const,
+        amount: '10.00',
+        currency: 'CNY',
+        basis: 'PER_UNIT' as const,
+        source: 'supplier',
+        verification: 'PARTNER_VERIFIED' as const,
+      },
+      {
+        key: 'international_freight' as const,
+        amount: '500',
+        currency: 'USD',
+        basis: 'TOTAL' as const,
+        source: 'forwarder',
+        verification: 'PARTNER_VERIFIED' as const,
+      },
+      {
+        key: 'certification' as const,
+        amount: '2000000',
+        currency: 'KRW',
+        basis: 'TOTAL' as const,
+        source: 'lab',
+        verification: 'AI_ESTIMATE' as const,
+      },
     ],
   };
 
   it('computes duty on CIF and VAT on CIF+duty', () => {
-    const r = calculateLandedCost({ ...base, duty: { ratePct: '8', source: 'tariff', verification: 'EXPERT_VERIFIED' } });
+    const r = calculateLandedCost({
+      ...base,
+      duty: { ratePct: '8', source: 'tariff', verification: 'EXPERT_VERIFIED' },
+    });
     // product 10*190.25*1000 = 1,902,500 ; freight 500*1380.5 = 690,250 ; CIF = 2,592,750
     expect(r.customsValueBase).toBe('2592750');
     expect(r.dutyBase).toBe('207420');
@@ -89,24 +113,53 @@ describe('landed cost', () => {
   });
 
   it('flags unknown duty instead of assuming one', () => {
-    const r = calculateLandedCost({ ...base, duty: { ratePct: null, source: 'none', verification: 'UNVERIFIED' } });
+    const r = calculateLandedCost({
+      ...base,
+      duty: { ratePct: null, source: 'none', verification: 'UNVERIFIED' },
+    });
     expect(r.complete).toBe(false);
     expect(r.dutyBase).toBeNull();
     expect(r.warnings.join()).toContain('관세율');
   });
 
   it('handles certification allocation modes', () => {
-    const sep = calculateLandedCost({ ...base, certificationAllocation: 'CUSTOMER_SEPARATE', duty: { ratePct: '0', source: 't', verification: 'EXPERT_VERIFIED' } });
+    const sep = calculateLandedCost({
+      ...base,
+      certificationAllocation: 'CUSTOMER_SEPARATE',
+      duty: { ratePct: '0', source: 't', verification: 'EXPERT_VERIFIED' },
+    });
     expect(sep.customerSeparateBase).toBe('2000000');
     expect(sep.totalExVatBase).toBe('2592750');
-    const am = calculateLandedCost({ ...base, certificationAllocation: 'AMORTIZE', amortizationUnits: 10000, duty: { ratePct: '0', source: 't', verification: 'EXPERT_VERIFIED' } });
+    const am = calculateLandedCost({
+      ...base,
+      certificationAllocation: 'AMORTIZE',
+      amortizationUnits: 10000,
+      duty: { ratePct: '0', source: 't', verification: 'EXPERT_VERIFIED' },
+    });
     expect(am.totalExVatBase).toBe(String(2592750 + 200000));
-    const co = calculateLandedCost({ ...base, certificationAllocation: 'COMPANY_EXPENSE', duty: { ratePct: '0', source: 't', verification: 'EXPERT_VERIFIED' } });
+    const co = calculateLandedCost({
+      ...base,
+      certificationAllocation: 'COMPANY_EXPENSE',
+      duty: { ratePct: '0', source: 't', verification: 'EXPERT_VERIFIED' },
+    });
     expect(co.totalExVatBase).toBe('2592750');
   });
 
   it('reports missing FX', () => {
-    const r = calculateLandedCost({ ...base, items: [{ key: 'product_cost', amount: '1', currency: 'EUR', basis: 'PER_UNIT', source: 's', verification: 'AI_ESTIMATE' }], duty: { ratePct: '8', source: 't', verification: 'AI_ESTIMATE' } });
+    const r = calculateLandedCost({
+      ...base,
+      items: [
+        {
+          key: 'product_cost',
+          amount: '1',
+          currency: 'EUR',
+          basis: 'PER_UNIT',
+          source: 's',
+          verification: 'AI_ESTIMATE',
+        },
+      ],
+      duty: { ratePct: '8', source: 't', verification: 'AI_ESTIMATE' },
+    });
     expect(r.complete).toBe(false);
     expect(r.warnings.some((w) => w.includes('EUR'))).toBe(true);
   });
@@ -114,36 +167,145 @@ describe('landed cost', () => {
 
 describe('margin engine', () => {
   const rules: MarginRule[] = [
-    { id: 'g', name: '전체', scope: 'GLOBAL', component: 'PRODUCT', action: 'SET', markupPct: '12', priority: 0, active: true, match: {} },
-    { id: 'c', name: 'LED', scope: 'CATEGORY', component: 'PRODUCT', action: 'SET', markupPct: '18', priority: 0, active: true, match: { category: 'LED' } },
-    { id: 's', name: '평판등', scope: 'SUBCATEGORY', component: 'PRODUCT', action: 'SET', markupPct: '20', priority: 0, active: true, match: { subcategory: '평판등' } },
-    { id: 'b', name: '배터리', scope: 'CUSTOM', component: 'PRODUCT', action: 'ADD', markupPct: '3', priority: 0, active: true, match: { attribute: { key: 'battery', equals: 'TRUE' } } },
-    { id: 'q', name: '소량', scope: 'QUANTITY', component: 'ALL', action: 'ADD', markupPct: '5', priority: 0, active: true, match: { qtyMax: 100 } },
-    { id: 'x', name: 'inactive', scope: 'SUPPLIER', component: 'PRODUCT', action: 'SET', markupPct: '99', priority: 0, active: false, match: { supplierId: 'sup' } },
+    {
+      id: 'g',
+      name: '전체',
+      scope: 'GLOBAL',
+      component: 'PRODUCT',
+      action: 'SET',
+      markupPct: '12',
+      priority: 0,
+      active: true,
+      match: {},
+    },
+    {
+      id: 'c',
+      name: 'LED',
+      scope: 'CATEGORY',
+      component: 'PRODUCT',
+      action: 'SET',
+      markupPct: '18',
+      priority: 0,
+      active: true,
+      match: { category: 'LED' },
+    },
+    {
+      id: 's',
+      name: '평판등',
+      scope: 'SUBCATEGORY',
+      component: 'PRODUCT',
+      action: 'SET',
+      markupPct: '20',
+      priority: 0,
+      active: true,
+      match: { subcategory: '평판등' },
+    },
+    {
+      id: 'b',
+      name: '배터리',
+      scope: 'CUSTOM',
+      component: 'PRODUCT',
+      action: 'ADD',
+      markupPct: '3',
+      priority: 0,
+      active: true,
+      match: { attribute: { key: 'battery', equals: 'TRUE' } },
+    },
+    {
+      id: 'q',
+      name: '소량',
+      scope: 'QUANTITY',
+      component: 'ALL',
+      action: 'ADD',
+      markupPct: '5',
+      priority: 0,
+      active: true,
+      match: { qtyMax: 100 },
+    },
+    {
+      id: 'x',
+      name: 'inactive',
+      scope: 'SUPPLIER',
+      component: 'PRODUCT',
+      action: 'SET',
+      markupPct: '99',
+      priority: 0,
+      active: false,
+      match: { supplierId: 'sup' },
+    },
   ];
   it('picks the most specific SET rule and sums ADD rules', () => {
-    const e = resolveMarkup('PRODUCT', rules, { category: 'LED', subcategory: '평판등', unitCostBase: '5000', quantity: 50, supplierId: 'sup', attributes: { battery: 'TRUE' } }, DEFAULT_MARGIN_CONFIG);
+    const e = resolveMarkup(
+      'PRODUCT',
+      rules,
+      {
+        category: 'LED',
+        subcategory: '평판등',
+        unitCostBase: '5000',
+        quantity: 50,
+        supplierId: 'sup',
+        attributes: { battery: 'TRUE' },
+      },
+      DEFAULT_MARGIN_CONFIG,
+    );
     expect(e.baseFrom.ruleId).toBe('s');
     expect(e.finalMarkupPct).toBe('28');
     expect(e.overriddenRules.map((r) => r.ruleId)).toEqual(['c', 'g']);
   });
   it('falls back to global and clamps', () => {
-    const e = resolveMarkup('PRODUCT', rules, { category: 'Other', unitCostBase: '100', quantity: 1000 }, { ...DEFAULT_MARGIN_CONFIG, globalMaxMarkupPct: '10' });
+    const e = resolveMarkup(
+      'PRODUCT',
+      rules,
+      { category: 'Other', unitCostBase: '100', quantity: 1000 },
+      { ...DEFAULT_MARGIN_CONFIG, globalMaxMarkupPct: '10' },
+    );
     expect(e.baseFrom.ruleId).toBe('g');
     expect(e.finalMarkupPct).toBe('10');
     expect(e.clampedFrom).toBe('12');
   });
   it('manual override wins', () => {
-    const e = resolveMarkup('PRODUCT', rules, { category: 'LED', unitCostBase: '100', quantity: 1000 }, DEFAULT_MARGIN_CONFIG, { component: 'PRODUCT', markupPct: '7', reason: 'STRATEGIC_CUSTOMER' });
+    const e = resolveMarkup(
+      'PRODUCT',
+      rules,
+      { category: 'LED', unitCostBase: '100', quantity: 1000 },
+      DEFAULT_MARGIN_CONFIG,
+      { component: 'PRODUCT', markupPct: '7', reason: 'STRATEGIC_CUSTOMER' },
+    );
     expect(e.finalMarkupPct).toBe('7');
   });
   it('cost range rules', () => {
     const cr: MarginRule[] = [
-      { id: 'a', name: '<5000', scope: 'COST_RANGE', component: 'PRODUCT', action: 'SET', markupPct: '25', priority: 1, active: true, match: { costMax: '5000' } },
-      { id: 'b', name: '<20000', scope: 'COST_RANGE', component: 'PRODUCT', action: 'SET', markupPct: '20', priority: 0, active: true, match: { costMax: '20000' } },
+      {
+        id: 'a',
+        name: '<5000',
+        scope: 'COST_RANGE',
+        component: 'PRODUCT',
+        action: 'SET',
+        markupPct: '25',
+        priority: 1,
+        active: true,
+        match: { costMax: '5000' },
+      },
+      {
+        id: 'b',
+        name: '<20000',
+        scope: 'COST_RANGE',
+        component: 'PRODUCT',
+        action: 'SET',
+        markupPct: '20',
+        priority: 0,
+        active: true,
+        match: { costMax: '20000' },
+      },
     ];
-    expect(resolveMarkup('PRODUCT', cr, { unitCostBase: '4000', quantity: 10 }, DEFAULT_MARGIN_CONFIG).finalMarkupPct).toBe('25');
-    expect(resolveMarkup('PRODUCT', cr, { unitCostBase: '15000', quantity: 10 }, DEFAULT_MARGIN_CONFIG).finalMarkupPct).toBe('20');
+    expect(
+      resolveMarkup('PRODUCT', cr, { unitCostBase: '4000', quantity: 10 }, DEFAULT_MARGIN_CONFIG)
+        .finalMarkupPct,
+    ).toBe('25');
+    expect(
+      resolveMarkup('PRODUCT', cr, { unitCostBase: '15000', quantity: 10 }, DEFAULT_MARGIN_CONFIG)
+        .finalMarkupPct,
+    ).toBe('20');
   });
   it('prices components with rounding and passes tax through', () => {
     const r = calculatePrice(
@@ -165,10 +327,19 @@ describe('margin engine', () => {
   });
   it('simulates rule changes', () => {
     const sim = simulateMarginChange(
-      [{ costs: [{ component: 'PRODUCT', totalCostBase: '100000' }], quantity: 10, ctx: { unitCostBase: '10000', quantity: 10 } }],
+      [
+        {
+          costs: [{ component: 'PRODUCT', totalCostBase: '100000' }],
+          quantity: 10,
+          ctx: { unitCostBase: '10000', quantity: 10 },
+        },
+      ],
       'KRW',
       { rules: [], config: DEFAULT_MARGIN_CONFIG },
-      { rules: [], config: { ...DEFAULT_MARGIN_CONFIG, defaults: { ...DEFAULT_MARGIN_CONFIG.defaults, PRODUCT: '20' } } },
+      {
+        rules: [],
+        config: { ...DEFAULT_MARGIN_CONFIG, defaults: { ...DEFAULT_MARGIN_CONFIG.defaults, PRODUCT: '20' } },
+      },
     );
     expect(sim.before.revenue).toBe('112000');
     expect(sim.after.revenue).toBe('120000');
@@ -177,7 +348,13 @@ describe('margin engine', () => {
 });
 
 describe('freight engine', () => {
-  const packing = { cartonCount: 20, cartonLengthCm: '50', cartonWidthCm: '40', cartonHeightCm: '30', cartonGrossWeightKg: '12' };
+  const packing = {
+    cartonCount: 20,
+    cartonLengthCm: '50',
+    cartonWidthCm: '40',
+    cartonHeightCm: '30',
+    cartonGrossWeightKg: '12',
+  };
   it('computes packing metrics', () => {
     const m = packingMetrics(packing);
     expect(m.cbm).toBe('1.2');
@@ -188,10 +365,43 @@ describe('freight engine', () => {
   });
   it('never invents rates and prefers trusted sources', () => {
     const rates: FreightRate[] = [
-      { id: 'm', mode: 'LCL', origin: 'CN*', destination: 'KRPUS', source: 'MARKET_RATE', verification: 'UNVERIFIED', currency: 'USD', basis: 'PER_RT', rate: '60', collectedAt: '2026-09-01' },
-      { id: 'f', mode: 'LCL', origin: 'CNNGB', destination: 'KRPUS', source: 'FORWARDER_VERIFIED', verification: 'PARTNER_VERIFIED', currency: 'USD', basis: 'PER_RT', rate: '45', minCharge: '50', fixedCharges: [{ name: 'DOC', amount: '30' }], collectedAt: '2026-09-10' },
+      {
+        id: 'm',
+        mode: 'LCL',
+        origin: 'CN*',
+        destination: 'KRPUS',
+        source: 'MARKET_RATE',
+        verification: 'UNVERIFIED',
+        currency: 'USD',
+        basis: 'PER_RT',
+        rate: '60',
+        collectedAt: '2026-09-01',
+      },
+      {
+        id: 'f',
+        mode: 'LCL',
+        origin: 'CNNGB',
+        destination: 'KRPUS',
+        source: 'FORWARDER_VERIFIED',
+        verification: 'PARTNER_VERIFIED',
+        currency: 'USD',
+        basis: 'PER_RT',
+        rate: '45',
+        minCharge: '50',
+        fixedCharges: [{ name: 'DOC', amount: '30' }],
+        collectedAt: '2026-09-10',
+      },
     ];
-    const r = compareFreightOptions({ packing, cargo: { battery: false, lithiumBattery: false, dangerousGoods: false, liquid: false, magnet: false }, origin: 'CNNGB', destination: 'KRPUS', rates, baseCurrency: 'KRW', fx, asOf: new Date('2026-09-20') });
+    const r = compareFreightOptions({
+      packing,
+      cargo: { battery: false, lithiumBattery: false, dangerousGoods: false, liquid: false, magnet: false },
+      origin: 'CNNGB',
+      destination: 'KRPUS',
+      rates,
+      baseCurrency: 'KRW',
+      fx,
+      asOf: new Date('2026-09-20'),
+    });
     const lcl = r.options.find((o) => o.mode === 'LCL')!;
     expect(lcl.status).toBe('PRICED');
     expect(lcl.rate!.id).toBe('f');
@@ -201,21 +411,65 @@ describe('freight engine', () => {
     expect(r.recommended).toBe('LCL');
   });
   it('blocks DG courier', () => {
-    const r = compareFreightOptions({ packing, cargo: { battery: true, lithiumBattery: true, dangerousGoods: true, liquid: false, magnet: false }, origin: 'CNNGB', destination: 'KRPUS', rates: [], baseCurrency: 'KRW', fx });
+    const r = compareFreightOptions({
+      packing,
+      cargo: { battery: true, lithiumBattery: true, dangerousGoods: true, liquid: false, magnet: false },
+      origin: 'CNNGB',
+      destination: 'KRPUS',
+      rates: [],
+      baseCurrency: 'KRW',
+      fx,
+    });
     expect(r.options.find((o) => o.mode === 'COURIER')!.status).toBe('INFEASIBLE');
   });
   it('mape', () => {
-    expect(mape([{ predicted: '110', actual: '100' }, { predicted: '90', actual: '100' }])).toBe('10.00');
+    expect(
+      mape([
+        { predicted: '110', actual: '100' },
+        { predicted: '90', actual: '100' },
+      ]),
+    ).toBe('10.00');
   });
 });
 
 describe('matching', () => {
   it('clusters by model number and phash, computes stats', () => {
     const clusters = clusterListings([
-      { id: '1', title: 'mini fan usb handheld', model: 'F-100', unitPrice: '28', currency: 'CNY', moq: 100, supplierId: 'a' },
-      { id: '2', title: 'handheld fan', model: 'F100', unitPrice: '30', currency: 'CNY', moq: 50, supplierId: 'b' },
-      { id: '3', title: 'desk lamp', model: 'L-9', phash: 'ffffffffffffffff', unitPrice: '50', currency: 'CNY', supplierId: 'c' },
-      { id: '4', title: 'lamp desk led', phash: 'fffffffffffffffe', unitPrice: '11', currency: 'CNY', supplierId: 'd' },
+      {
+        id: '1',
+        title: 'mini fan usb handheld',
+        model: 'F-100',
+        unitPrice: '28',
+        currency: 'CNY',
+        moq: 100,
+        supplierId: 'a',
+      },
+      {
+        id: '2',
+        title: 'handheld fan',
+        model: 'F100',
+        unitPrice: '30',
+        currency: 'CNY',
+        moq: 50,
+        supplierId: 'b',
+      },
+      {
+        id: '3',
+        title: 'desk lamp',
+        model: 'L-9',
+        phash: 'ffffffffffffffff',
+        unitPrice: '50',
+        currency: 'CNY',
+        supplierId: 'c',
+      },
+      {
+        id: '4',
+        title: 'lamp desk led',
+        phash: 'fffffffffffffffe',
+        unitPrice: '11',
+        currency: 'CNY',
+        supplierId: 'd',
+      },
     ]);
     expect(clusters.length).toBe(2);
     const fan = clusters.find((c) => c.memberIds.includes('1'))!;
@@ -231,8 +485,38 @@ describe('matching', () => {
   it('ranks explainably and assigns tags', () => {
     const ranked = rankCandidates(
       [
-        { id: 'cheap', sourceType: 'PUBLIC_MARKET', unitPriceBase: '1000', moq: 500, leadTimeDays: 30, imageSimilarity: 0.9, specMatch: 0.8, supplierReliability: 0.4, qualityHistory: null, oemSupported: false, complianceReadiness: null, logisticsScore: null, communication: null, pastOrders: 0 },
-        { id: 'good', sourceType: 'PRIVATE_NETWORK', unitPriceBase: '1300', moq: 100, leadTimeDays: 15, imageSimilarity: 0.95, specMatch: 0.9, supplierReliability: 0.9, qualityHistory: 0.9, oemSupported: true, complianceReadiness: 0.8, logisticsScore: 0.8, communication: 0.9, pastOrders: 12 },
+        {
+          id: 'cheap',
+          sourceType: 'PUBLIC_MARKET',
+          unitPriceBase: '1000',
+          moq: 500,
+          leadTimeDays: 30,
+          imageSimilarity: 0.9,
+          specMatch: 0.8,
+          supplierReliability: 0.4,
+          qualityHistory: null,
+          oemSupported: false,
+          complianceReadiness: null,
+          logisticsScore: null,
+          communication: null,
+          pastOrders: 0,
+        },
+        {
+          id: 'good',
+          sourceType: 'PRIVATE_NETWORK',
+          unitPriceBase: '1300',
+          moq: 100,
+          leadTimeDays: 15,
+          imageSimilarity: 0.95,
+          specMatch: 0.9,
+          supplierReliability: 0.9,
+          qualityHistory: 0.9,
+          oemSupported: true,
+          complianceReadiness: 0.8,
+          logisticsScore: 0.8,
+          communication: 0.9,
+          pastOrders: 12,
+        },
       ],
       { targetUnitPriceBase: '1200', quantity: 300, wantsOem: true, desiredLeadTimeDays: 20 },
     );
@@ -247,8 +531,40 @@ describe('matching', () => {
 
 describe('compliance', () => {
   const rules: RegulationRule[] = [
-    { regulationId: 'r1', versionId: 'v1', code: 'RRA', name: '방송통신기자재 적합성평가', authority: '국립전파연구원', category: 'RADIO', triggerAll: [], triggerAny: ['bluetooth', 'wifi', 'wireless'], exceptions: [], hsPrefixes: [], mandatory: true, documentsRequired: ['RF 시험성적서'], testsRequired: ['RF'], expertType: 'RRA_EMC_LAB', officialSource: null },
-    { regulationId: 'r2', versionId: 'v1', code: 'FOOD', name: '식품용 기구·용기·포장', authority: '식품의약품안전처', category: 'FOOD', triggerAll: ['food_contact'], triggerAny: [], exceptions: [], hsPrefixes: [], mandatory: true, documentsRequired: [], testsRequired: [], expertType: 'MFDS_EXPERT', officialSource: null },
+    {
+      regulationId: 'r1',
+      versionId: 'v1',
+      code: 'RRA',
+      name: '방송통신기자재 적합성평가',
+      authority: '국립전파연구원',
+      category: 'RADIO',
+      triggerAll: [],
+      triggerAny: ['bluetooth', 'wifi', 'wireless'],
+      exceptions: [],
+      hsPrefixes: [],
+      mandatory: true,
+      documentsRequired: ['RF 시험성적서'],
+      testsRequired: ['RF'],
+      expertType: 'RRA_EMC_LAB',
+      officialSource: null,
+    },
+    {
+      regulationId: 'r2',
+      versionId: 'v1',
+      code: 'FOOD',
+      name: '식품용 기구·용기·포장',
+      authority: '식품의약품안전처',
+      category: 'FOOD',
+      triggerAll: ['food_contact'],
+      triggerAny: [],
+      exceptions: [],
+      hsPrefixes: [],
+      mandatory: true,
+      documentsRequired: [],
+      testsRequired: [],
+      expertType: 'MFDS_EXPERT',
+      officialSource: null,
+    },
   ];
   it('matches rules, keeps unknowns unknown', () => {
     const attrs = { ...emptyAttributes(), bluetooth: 'TRUE' as const, confidence: 0.9 };
@@ -259,13 +575,22 @@ describe('compliance', () => {
     expect(no.find((r) => r.code === 'FOOD')!.status).toBe('NOT_APPLICABLE');
   });
   it('merges attributes and marks conflicts unknown', () => {
-    const { merged, conflicts } = mergeAttributes({ ...emptyAttributes(), battery: 'TRUE' }, { battery: 'FALSE', bluetooth: 'TRUE' });
+    const { merged, conflicts } = mergeAttributes(
+      { ...emptyAttributes(), battery: 'TRUE' },
+      { battery: 'FALSE', bluetooth: 'TRUE' },
+    );
     expect(merged.battery).toBe('UNKNOWN');
     expect(merged.bluetooth).toBe('TRUE');
     expect(conflicts).toContain('battery');
   });
   it('risk engine explains certification risk', () => {
-    const attrs = { ...emptyAttributes(), bluetooth: 'TRUE' as const, battery: 'TRUE' as const, electrical: 'TRUE' as const, confidence: 0.9 };
+    const attrs = {
+      ...emptyAttributes(),
+      bluetooth: 'TRUE' as const,
+      battery: 'TRUE' as const,
+      electrical: 'TRUE' as const,
+      confidence: 0.9,
+    };
     const r = assessRisk({ attributes: attrs, compliance: evaluateCompliance(rules, attrs) });
     const cert = r.items.find((i) => i.dimension === 'CERTIFICATION')!;
     expect(cert.reasons[0]).toContain('Bluetooth + 배터리 + 전기제품');

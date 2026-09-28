@@ -11,7 +11,12 @@ export async function serverApi<T>(path: string, init: RequestInit = {}): Promis
   try {
     const res = await fetch(`${API}/api/v1${path}`, {
       ...init,
-      headers: { 'x-forwarded-host': host, 'x-forwarded-proto': h.get('x-forwarded-proto') ?? 'http', accept: 'application/json', ...(init.headers ?? {}) },
+      headers: {
+        'x-forwarded-host': host,
+        'x-forwarded-proto': h.get('x-forwarded-proto') ?? 'http',
+        accept: 'application/json',
+        ...(init.headers ?? {}),
+      },
       cache: 'no-store',
     });
     if (!res.ok) return null;

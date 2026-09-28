@@ -6,7 +6,8 @@ import { featureFlags, plans, subscriptions, tenantDomains, tenants } from '../d
 import { cached, cacheDel } from '../lib/cache.js';
 import type { TenantInfo } from '../http/context.js';
 
-export type HostResolution = { kind: 'platform' } | { kind: 'tenant'; tenant: TenantInfo } | { kind: 'unknown' };
+export type HostResolution =
+  { kind: 'platform' } | { kind: 'tenant'; tenant: TenantInfo } | { kind: 'unknown' };
 
 export function normalizeHost(raw: string): string {
   return raw.split(',')[0]!.trim().toLowerCase().replace(/:\d+$/, '');
@@ -30,7 +31,13 @@ export async function resolveHost(rawHost: string): Promise<HostResolution> {
     const [d] = await systemDb
       .select({ tenantId: tenantDomains.tenantId })
       .from(tenantDomains)
-      .where(and(eq(tenantDomains.hostname, host), eq(tenantDomains.active, true), eq(tenantDomains.dnsStatus, 'VERIFIED')))
+      .where(
+        and(
+          eq(tenantDomains.hostname, host),
+          eq(tenantDomains.active, true),
+          eq(tenantDomains.dnsStatus, 'VERIFIED'),
+        ),
+      )
       .limit(1);
     if (d) {
       const t = await tenantById(d.tenantId);
@@ -63,10 +70,18 @@ export interface PlanLimits {
 }
 
 /** Effective feature set = plan features ± subscription overrides ± tenant feature flags. */
-export async function effectiveFeatures(tenantId: string): Promise<{ features: Set<FeatureModule>; limits: PlanLimits; planCode: string | null }> {
+export async function effectiveFeatures(
+  tenantId: string,
+): Promise<{ features: Set<FeatureModule>; limits: PlanLimits; planCode: string | null }> {
   return cached(`features:${tenantId}`, 30, async () => {
     const [sub] = await systemDb
-      .select({ planFeatures: plans.features, planLimits: plans.limits, planCode: plans.code, featureOverrides: subscriptions.featureOverrides, limitOverrides: subscriptions.limitOverrides })
+      .select({
+        planFeatures: plans.features,
+        planLimits: plans.limits,
+        planCode: plans.code,
+        featureOverrides: subscriptions.featureOverrides,
+        limitOverrides: subscriptions.limitOverrides,
+      })
       .from(subscriptions)
       .innerJoin(plans, eq(plans.id, subscriptions.planId))
       .where(eq(subscriptions.tenantId, tenantId))
@@ -74,9 +89,19 @@ export async function effectiveFeatures(tenantId: string): Promise<{ features: S
     const flags = await systemDb.select().from(featureFlags).where(eq(featureFlags.tenantId, tenantId));
     // Without a subscription every module is available (self-hosted single-company mode).
     const set = new Set<string>(sub ? sub.planFeatures : FEATURE_MODULES);
-    for (const [k, v] of Object.entries(sub?.featureOverrides ?? {})) v ? set.add(k) : set.delete(k);
-    for (const f of flags) f.enabled ? set.add(f.module) : set.delete(f.module);
-    return { features: [...set], limits: { ...(sub?.planLimits ?? {}), ...(sub?.limitOverrides ?? {}) }, planCode: sub?.planCode ?? null };
+    for (const [k, v] of Object.entries(sub?.featureOverrides ?? {})) {
+      if (v) set.add(k);
+      else set.delete(k);
+    }
+    for (const f of flags) {
+      if (f.enabled) set.add(f.module);
+      else set.delete(f.module);
+    }
+    return {
+      features: [...set],
+      limits: { ...(sub?.planLimits ?? {}), ...(sub?.limitOverrides ?? {}) },
+      planCode: sub?.planCode ?? null,
+    };
   }).then((r) => ({ ...r, features: new Set(r.features as FeatureModule[]) }));
 }
 

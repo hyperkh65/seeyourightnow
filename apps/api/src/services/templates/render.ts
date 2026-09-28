@@ -20,10 +20,15 @@ hb.registerHelper('money', (amount: unknown, currency: unknown) => {
     return String(amount);
   }
 });
-hb.registerHelper('num', (v: unknown) => (typeof v === 'number' || typeof v === 'string' ? String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ',') : ''));
+hb.registerHelper('num', (v: unknown) =>
+  typeof v === 'number' || typeof v === 'string' ? String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '',
+);
 hb.registerHelper('inc', (v: unknown) => Number(v) + 1);
 hb.registerHelper('eq', (a: unknown, b: unknown) => a === b);
-hb.registerHelper('nl2br', (v: unknown) => new hb.SafeString(hb.Utils.escapeExpression(String(v ?? '')).replace(/\n/g, '<br>')));
+hb.registerHelper(
+  'nl2br',
+  (v: unknown) => new hb.SafeString(hb.Utils.escapeExpression(String(v ?? '')).replace(/\n/g, '<br>')),
+);
 hb.registerHelper('fmtDate', (v: unknown) => (v ? new Date(String(v)).toISOString().slice(0, 10) : ''));
 
 const cache = new Map<string, HandlebarsTemplateDelegate>();

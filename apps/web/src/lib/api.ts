@@ -38,10 +38,17 @@ export interface RequestOptions {
 }
 
 export function newIdempotencyKey(): string {
-  return typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-async function request<T>(method: string, path: string, body?: unknown, opts: RequestOptions = {}): Promise<T> {
+async function request<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+  opts: RequestOptions = {},
+): Promise<T> {
   const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
   const headers: Record<string, string> = { Accept: 'application/json', ...(opts.headers ?? {}) };
   if (method !== 'GET') {
@@ -61,7 +68,13 @@ async function request<T>(method: string, path: string, body?: unknown, opts: Re
   const data = ct.includes('application/json') ? await res.json().catch(() => null) : await res.text();
   if (!res.ok) {
     const e = (data ?? {}) as { code?: string; message?: string; details?: unknown; requestId?: string };
-    const err = new ApiError(res.status, e.code ?? 'ERROR', e.message ?? '요청을 처리하지 못했습니다.', e.details, e.requestId);
+    const err = new ApiError(
+      res.status,
+      e.code ?? 'ERROR',
+      e.message ?? '요청을 처리하지 못했습니다.',
+      e.details,
+      e.requestId,
+    );
     if (err.code === 'STEP_UP_REQUIRED' && opts.stepUp !== false && stepUpHandler) {
       const ok = await stepUpHandler();
       if (ok) return request<T>(method, path, body, { ...opts, stepUp: false });
@@ -73,9 +86,11 @@ async function request<T>(method: string, path: string, body?: unknown, opts: Re
 
 export const api = {
   get: <T>(path: string, opts?: RequestOptions) => request<T>('GET', path, undefined, opts),
-  post: <T>(path: string, body?: unknown, opts?: RequestOptions) => request<T>('POST', path, body ?? {}, opts),
+  post: <T>(path: string, body?: unknown, opts?: RequestOptions) =>
+    request<T>('POST', path, body ?? {}, opts),
   put: <T>(path: string, body?: unknown, opts?: RequestOptions) => request<T>('PUT', path, body ?? {}, opts),
-  patch: <T>(path: string, body?: unknown, opts?: RequestOptions) => request<T>('PATCH', path, body ?? {}, opts),
+  patch: <T>(path: string, body?: unknown, opts?: RequestOptions) =>
+    request<T>('PATCH', path, body ?? {}, opts),
   delete: <T>(path: string, opts?: RequestOptions) => request<T>('DELETE', path, undefined, opts),
   upload: <T>(path: string, form: FormData, opts?: RequestOptions) => request<T>('POST', path, form, opts),
 };
@@ -86,7 +101,10 @@ export function errorMessage(e: unknown): string {
     if (e.code === 'VALIDATION_ERROR') return '입력값을 확인해 주세요.';
     return e.message;
   }
-  if (e instanceof Error) return e.message === 'Failed to fetch' ? '서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.' : e.message;
+  if (e instanceof Error)
+    return e.message === 'Failed to fetch'
+      ? '서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.'
+      : e.message;
   return '알 수 없는 오류가 발생했습니다.';
 }
 

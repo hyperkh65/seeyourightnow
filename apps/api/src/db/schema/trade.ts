@@ -52,7 +52,10 @@ export const hsClassifications = pgTable(
     id: id(),
     tenantId: tenantId(),
     productId: uuid('product_id').notNull(),
-    candidates: jsonb('candidates').$type<Array<{ code: string; description: string; score: number; reasons: string[]; source: string }>>().notNull().default([]),
+    candidates: jsonb('candidates')
+      .$type<Array<{ code: string; description: string; score: number; reasons: string[]; source: string }>>()
+      .notNull()
+      .default([]),
     estimatedHs: text('estimated_hs'),
     estimatedConfidence: real('estimated_confidence'),
     estimatedSource: text('estimated_source').notNull().default(''),
@@ -138,7 +141,10 @@ export const complianceChecks = pgTable(
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [uniqueIndex('compliance_checks_uq').on(t.productId, t.regulationId), index('compliance_checks_product_idx').on(t.tenantId, t.productId)],
+  (t) => [
+    uniqueIndex('compliance_checks_uq').on(t.productId, t.regulationId),
+    index('compliance_checks_product_idx').on(t.tenantId, t.productId),
+  ],
 );
 
 /** Append-only review history (who changed what, when, why). */
@@ -178,20 +184,17 @@ export const partnerTasks = pgTable(
 
 // ─────────────────────────── Freight ───────────────────────────
 
-export const ports = pgTable(
-  'ports',
-  {
-    id: id(),
-    unlocode: text('unlocode').notNull().unique(),
-    name: text('name').notNull(),
-    country: text('country').notNull(),
-    lat: real('lat').notNull(),
-    lon: real('lon').notNull(),
-    geofenceKm: real('geofence_km').notNull().default(15),
-    kind: text('kind').notNull().default('SEAPORT'), // SEAPORT | AIRPORT | INLAND
-    source: text('source').notNull().default('UN/LOCODE'),
-  },
-);
+export const ports = pgTable('ports', {
+  id: id(),
+  unlocode: text('unlocode').notNull().unique(),
+  name: text('name').notNull(),
+  country: text('country').notNull(),
+  lat: real('lat').notNull(),
+  lon: real('lon').notNull(),
+  geofenceKm: real('geofence_km').notNull().default(15),
+  kind: text('kind').notNull().default('SEAPORT'), // SEAPORT | AIRPORT | INLAND
+  source: text('source').notNull().default('UN/LOCODE'),
+});
 
 export const freightRates = pgTable(
   'freight_rates',
@@ -208,7 +211,10 @@ export const freightRates = pgTable(
     basis: text('basis').notNull(),
     rate: money('rate').notNull(),
     minCharge: money('min_charge'),
-    fixedCharges: jsonb('fixed_charges').$type<Array<{ name: string; amount: string }>>().notNull().default([]),
+    fixedCharges: jsonb('fixed_charges')
+      .$type<Array<{ name: string; amount: string }>>()
+      .notNull()
+      .default([]),
     transitDaysMin: integer('transit_days_min'),
     transitDaysMax: integer('transit_days_max'),
     validFrom: text('valid_from'),

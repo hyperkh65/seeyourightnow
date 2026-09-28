@@ -2,7 +2,9 @@ import pg from 'pg';
 import { runMigrations } from './migrate.js';
 
 /** Development/test only: drops all application tables and re-runs migrations. */
-export async function resetDatabase(url = process.env.DATABASE_OWNER_URL ?? 'postgres://sos_owner:sos_owner@localhost:5432/sourcing_os') {
+export async function resetDatabase(
+  url = process.env.DATABASE_OWNER_URL ?? 'postgres://sos_owner:sos_owner@localhost:5432/sourcing_os',
+) {
   if (process.env.NODE_ENV === 'production') throw new Error('refusing to reset a production database');
   const pool = new pg.Pool({ connectionString: url, max: 1 });
   try {

@@ -30,7 +30,14 @@ describe('tenant isolation', () => {
     expect((await acmeAdmin.get(`/quotations/${d.quoteId}`)).statusCode).toBe(404);
     expect((await acmeAdmin.post(`/quotations/${d.quoteId}/final-approve`, {})).statusCode).toBe(404);
     expect((await acmeAdmin.post(`/quotations/${d.quoteId}/versions`, {})).statusCode).toBe(404);
-    expect((await acmeBuyer.post(`/quotations/${d.quoteId}/customer-decision`, { decision: 'APPROVE', versionId: d.versionId })).statusCode).toBe(404);
+    expect(
+      (
+        await acmeBuyer.post(`/quotations/${d.quoteId}/customer-decision`, {
+          decision: 'APPROVE',
+          versionId: d.versionId,
+        })
+      ).statusCode,
+    ).toBe(404);
     const list = json<{ items: Array<{ id: string }> }>(await acmeAdmin.get('/quotations'));
     expect(list.items.some((q) => q.id === d.quoteId)).toBe(false);
   });
@@ -46,7 +53,14 @@ describe('tenant isolation', () => {
   it('cannot read or modify another tenant’s shipment', async () => {
     expect((await acmeAdmin.get(`/shipments/${d.shipmentId}`)).statusCode).toBe(404);
     expect((await acmeAdmin.patch(`/shipments/${d.shipmentId}`, { blNumber: 'HACK' })).statusCode).toBe(404);
-    expect((await acmeAdmin.post(`/shipments/${d.shipmentId}/events`, { eventType: 'DELIVERED', occurredAt: new Date().toISOString() })).statusCode).toBeGreaterThanOrEqual(400);
+    expect(
+      (
+        await acmeAdmin.post(`/shipments/${d.shipmentId}/events`, {
+          eventType: 'DELIVERED',
+          occurredAt: new Date().toISOString(),
+        })
+      ).statusCode,
+    ).toBeGreaterThanOrEqual(400);
     const list = json<{ items: Array<{ id: string }> }>(await acmeAdmin.get('/shipments'));
     expect(list.items.some((s) => s.id === d.shipmentId)).toBe(false);
   });
@@ -68,18 +82,33 @@ describe('tenant isolation', () => {
   });
 
   it('database RLS blocks cross-tenant reads and writes even for raw queries', async () => {
-    const [acme] = (await systemDb.execute<{ id: string }>(sql`select id from tenants where slug = 'acme'`)).rows;
-    const [demo] = (await systemDb.execute<{ id: string }>(sql`select id from tenants where slug = 'demo'`)).rows;
-    const seen = await withTenant({ tenantId: acme!.id }, (tx) => tx.select().from(quotations).where(sql`${quotations.id} = ${d.quoteId}`));
+    const [acme] = (await systemDb.execute<{ id: string }>(sql`select id from tenants where slug = 'acme'`))
+      .rows;
+    const [demo] = (await systemDb.execute<{ id: string }>(sql`select id from tenants where slug = 'demo'`))
+      .rows;
+    const seen = await withTenant({ tenantId: acme!.id }, (tx) =>
+      tx
+        .select()
+        .from(quotations)
+        .where(sql`${quotations.id} = ${d.quoteId}`),
+    );
     expect(seen.length).toBe(0);
-    await expect(withTenant({ tenantId: acme!.id }, (tx) => tx.insert(quotations).values({ tenantId: demo!.id, number: 'X-1', projectId: d.projectId }))).rejects.toThrow();
+    await expect(
+      withTenant({ tenantId: acme!.id }, (tx) =>
+        tx.insert(quotations).values({ tenantId: demo!.id, number: 'X-1', projectId: d.projectId }),
+      ),
+    ).rejects.toThrow();
     // Without any tenant context the runtime role sees nothing at all (fail closed).
     const none = await appDb.execute(sql`select count(*)::int as n from quotations`);
     expect((none.rows[0] as { n: number }).n).toBe(0);
   });
 
   it('every table with tenant_id has RLS enabled and forced', async () => {
-    const r = await systemDb.execute<{ relname: string; relrowsecurity: boolean; relforcerowsecurity: boolean }>(sql`
+    const r = await systemDb.execute<{
+      relname: string;
+      relrowsecurity: boolean;
+      relforcerowsecurity: boolean;
+    }>(sql`
       select c.relname, c.relrowsecurity, c.relforcerowsecurity from pg_class c
       join pg_namespace n on n.oid = c.relnamespace
       where n.nspname = 'public' and c.relkind = 'r'

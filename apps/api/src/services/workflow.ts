@@ -38,15 +38,34 @@ export const ORDER_FULFILLMENT: StepDef[] = [
 ];
 
 export async function ensureWorkflow(tx: Tx, tenantId: string, projectId: string) {
-  const [w] = await tx.select().from(workflowInstances).where(and(eq(workflowInstances.projectId, projectId), eq(workflowInstances.definition, 'ORDER_FULFILLMENT'))).limit(1);
+  const [w] = await tx
+    .select()
+    .from(workflowInstances)
+    .where(
+      and(eq(workflowInstances.projectId, projectId), eq(workflowInstances.definition, 'ORDER_FULFILLMENT')),
+    )
+    .limit(1);
   if (w) return w;
   const [n] = await tx
     .insert(workflowInstances)
-    .values({ tenantId, definition: 'ORDER_FULFILLMENT', projectId, currentStep: ORDER_FULFILLMENT[0]!.key, status: 'RUNNING', history: [] })
+    .values({
+      tenantId,
+      definition: 'ORDER_FULFILLMENT',
+      projectId,
+      currentStep: ORDER_FULFILLMENT[0]!.key,
+      status: 'RUNNING',
+      history: [],
+    })
     .onConflictDoNothing()
     .returning();
   if (n) return n;
-  const [again] = await tx.select().from(workflowInstances).where(and(eq(workflowInstances.projectId, projectId), eq(workflowInstances.definition, 'ORDER_FULFILLMENT'))).limit(1);
+  const [again] = await tx
+    .select()
+    .from(workflowInstances)
+    .where(
+      and(eq(workflowInstances.projectId, projectId), eq(workflowInstances.definition, 'ORDER_FULFILLMENT')),
+    )
+    .limit(1);
   return again!;
 }
 
@@ -54,7 +73,14 @@ export async function ensureWorkflow(tx: Tx, tenantId: string, projectId: string
  * Marks `step` complete (idempotent) and moves to the following step.
  * Completing a later step implicitly completes skipped earlier steps (recorded as SKIPPED).
  */
-export async function completeStep(tx: Tx, tenantId: string, projectId: string, step: string, by: string | null, note?: string) {
+export async function completeStep(
+  tx: Tx,
+  tenantId: string,
+  projectId: string,
+  step: string,
+  by: string | null,
+  note?: string,
+) {
   const w = await ensureWorkflow(tx, tenantId, projectId);
   const idx = ORDER_FULFILLMENT.findIndex((s) => s.key === step);
   if (idx < 0) throw new Error(`unknown workflow step ${step}`);
@@ -62,10 +88,18 @@ export async function completeStep(tx: Tx, tenantId: string, projectId: string, 
   if (w.status === 'COMPLETED' || idx < curIdx) return w; // already past this step
   const now = new Date().toISOString();
   const history = [...w.history];
-  for (let i = curIdx; i < idx; i++) history.push({ step: ORDER_FULFILLMENT[i]!.key, status: 'SKIPPED', at: now, by });
+  for (let i = curIdx; i < idx; i++)
+    history.push({ step: ORDER_FULFILLMENT[i]!.key, status: 'SKIPPED', at: now, by });
   history.push({ step, status: 'DONE', at: now, by, ...(note ? { note } : {}) });
   const next = ORDER_FULFILLMENT[idx + 1];
-  const status = !next || next.key === 'COMPLETED' ? (next ? 'COMPLETED' : 'COMPLETED') : next.human ? 'WAITING_HUMAN' : 'RUNNING';
+  const status =
+    !next || next.key === 'COMPLETED'
+      ? next
+        ? 'COMPLETED'
+        : 'COMPLETED'
+      : next.human
+        ? 'WAITING_HUMAN'
+        : 'RUNNING';
   const currentStep = next?.key ?? 'COMPLETED';
   if (next?.key === 'COMPLETED') history.push({ step: 'COMPLETED', status: 'DONE', at: now, by });
   const [updated] = await tx
@@ -79,24 +113,55 @@ export async function completeStep(tx: Tx, tenantId: string, projectId: string, 
   if (p && stageRank(stage) > stageRank(p.stage as ProjectStage)) {
     await tx
       .update(sourcingProjects)
-      .set({ stage, stageHistory: [...p.stageHistory, { stage, at: now, by }], ...(stage === 'COMPLETED' ? { status: 'CLOSED' } : {}), updatedAt: new Date() })
+      .set({
+        stage,
+        stageHistory: [...p.stageHistory, { stage, at: now, by }],
+        ...(stage === 'COMPLETED' ? { status: 'CLOSED' } : {}),
+        updatedAt: new Date(),
+      })
       .where(eq(sourcingProjects.id, projectId));
   }
   return updated!;
 }
 
-const ORDER: ProjectStage[] = ['REQUESTED', 'SEARCHING', 'QUOTE_PREPARING', 'QUOTE_APPROVED', 'CONTRACT', 'PRODUCTION', 'INSPECTION', 'READY_TO_SHIP', 'SHIPPED', 'ARRIVED', 'CUSTOMS', 'DELIVERING', 'COMPLETED'];
+const ORDER: ProjectStage[] = [
+  'REQUESTED',
+  'SEARCHING',
+  'QUOTE_PREPARING',
+  'QUOTE_APPROVED',
+  'CONTRACT',
+  'PRODUCTION',
+  'INSPECTION',
+  'READY_TO_SHIP',
+  'SHIPPED',
+  'ARRIVED',
+  'CUSTOMS',
+  'DELIVERING',
+  'COMPLETED',
+];
 function stageRank(s: ProjectStage): number {
   return ORDER.indexOf(s);
 }
 
 export async function workflowView(tx: Tx, projectId: string) {
-  const [w] = await tx.select().from(workflowInstances).where(eq(workflowInstances.projectId, projectId)).limit(1);
-  const done = new Set((w?.history ?? []).filter((h) => h.status === 'DONE' || h.status === 'SKIPPED').map((h) => h.step));
+  const [w] = await tx
+    .select()
+    .from(workflowInstances)
+    .where(eq(workflowInstances.projectId, projectId))
+    .limit(1);
+  const done = new Set(
+    (w?.history ?? []).filter((h) => h.status === 'DONE' || h.status === 'SKIPPED').map((h) => h.step),
+  );
   return {
     status: w?.status ?? 'NOT_STARTED',
     currentStep: w?.currentStep ?? null,
     waitingFor: w?.waitingFor ?? null,
-    steps: ORDER_FULFILLMENT.map((s) => ({ key: s.key, label: s.label, human: s.human, state: done.has(s.key) ? 'DONE' : w?.currentStep === s.key ? 'CURRENT' : 'PENDING', at: w?.history.find((h) => h.step === s.key)?.at ?? null })),
+    steps: ORDER_FULFILLMENT.map((s) => ({
+      key: s.key,
+      label: s.label,
+      human: s.human,
+      state: done.has(s.key) ? 'DONE' : w?.currentStep === s.key ? 'CURRENT' : 'PENDING',
+      at: w?.history.find((h) => h.step === s.key)?.at ?? null,
+    })),
   };
 }

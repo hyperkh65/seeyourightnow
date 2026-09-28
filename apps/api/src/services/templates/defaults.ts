@@ -143,27 +143,104 @@ export const INVOICE_HTML = `${HEADER}
 ${FOOTER}`;
 
 export const DEFAULT_CONTRACT_CLAUSES = [
-  { key: 'product', title: '목적 및 제품', body: '갑은 본 계약서에 기재된 제품(이하 "제품")을 을에게 공급하고, 을은 이에 대한 대금을 지급한다. 제품의 상세 사양은 승인된 견적서 및 샘플을 따른다.' },
-  { key: 'quantity_price', title: '수량 및 가격', body: '제품의 수량과 가격은 본 계약서 품목표를 따른다. 가격은 별도 표기가 없는 한 부가가치세를 포함한다.' },
-  { key: 'payment', title: '대금 지급', body: '{{paymentTerms}}. 을이 지급 기한을 지키지 않는 경우 갑은 생산 또는 출고를 보류할 수 있다.' },
-  { key: 'lead_time', title: '납기', body: '납기는 계약금 입금 및 샘플 확정일로부터 {{leadTime}}로 한다. 불가항력 또는 을의 사유로 인한 지연은 납기에 산입하지 않는다.' },
-  { key: 'shipping', title: '운송 및 인도', body: '인도 조건은 {{incoterm}} 기준으로 하며, 위험은 인도 시점에 을에게 이전된다.' },
-  { key: 'sample', title: '샘플 승인', body: '양산 전 샘플을 제공하는 경우, 을이 서면(전자 승인 포함)으로 승인한 샘플이 품질 기준이 된다.' },
-  { key: 'quality', title: '품질 기준 및 허용 불량률', body: '품질 기준은 승인 샘플 및 합의된 사양을 따르며, 허용 불량률은 {{acceptableDefectRate}}로 한다.' },
-  { key: 'inspection', title: '검품', body: '출고 전 검품은 합의된 방식(AQL 등)으로 실시할 수 있으며, 검품 결과는 양 당사자에게 공유된다.' },
-  { key: 'claim', title: '클레임', body: '을은 제품 수령 후 {{claimDays}}일 이내에 하자를 서면으로 통지하여야 하며, 갑은 확인 후 교환·보수·환불 중 합의된 방식으로 처리한다.' },
-  { key: 'delay', title: '지연', body: '갑의 귀책으로 납기가 지연되는 경우 양 당사자는 협의하여 조치하며, 구체적인 지체상금은 별도 합의에 따른다.' },
-  { key: 'fx', title: '환율 변동', body: '견적 기준 환율 대비 결제 시점 환율이 {{fxThresholdPct}}% 이상 변동한 경우 양 당사자는 가격 조정을 협의할 수 있다.' },
-  { key: 'freight', title: '운임 변동', body: '국제 운임이 견적 시점 대비 현저히 변동한 경우 실제 운임 기준으로 정산할 수 있다.' },
-  { key: 'certification', title: '인증', body: '제품의 한국 내 판매에 필요한 인증의 범위와 비용 부담은 견적서 및 별도 합의에 따른다. 인증 결과에 따라 사양 변경이 필요할 수 있다.' },
-  { key: 'ip', title: '지식재산권', body: '을이 제공한 로고, 디자인 등에 대한 지식재산권 침해 문제는 을이 책임지며, 갑은 제3자의 권리를 침해하지 않도록 합리적인 노력을 한다.' },
-  { key: 'cancellation', title: '계약 해제', body: '생산 착수 이후 을의 사유로 계약을 해제하는 경우 이미 발생한 비용은 을이 부담한다.' },
-  { key: 'force_majeure', title: '불가항력', body: '천재지변, 전쟁, 감염병, 정부 조치, 항만 폐쇄 등 불가항력으로 인한 불이행에 대해 양 당사자는 책임을 지지 않는다.' },
-  { key: 'confidentiality', title: '비밀유지', body: '양 당사자는 본 계약과 관련하여 알게 된 상대방의 영업 비밀을 제3자에게 누설하지 않는다.' },
-  { key: 'dispute', title: '분쟁 해결', body: '본 계약에 관한 분쟁은 상호 협의하여 해결하며, 협의가 되지 않을 경우 갑의 소재지 관할 법원을 전속 관할로 한다.' },
+  {
+    key: 'product',
+    title: '목적 및 제품',
+    body: '갑은 본 계약서에 기재된 제품(이하 "제품")을 을에게 공급하고, 을은 이에 대한 대금을 지급한다. 제품의 상세 사양은 승인된 견적서 및 샘플을 따른다.',
+  },
+  {
+    key: 'quantity_price',
+    title: '수량 및 가격',
+    body: '제품의 수량과 가격은 본 계약서 품목표를 따른다. 가격은 별도 표기가 없는 한 부가가치세를 포함한다.',
+  },
+  {
+    key: 'payment',
+    title: '대금 지급',
+    body: '{{paymentTerms}}. 을이 지급 기한을 지키지 않는 경우 갑은 생산 또는 출고를 보류할 수 있다.',
+  },
+  {
+    key: 'lead_time',
+    title: '납기',
+    body: '납기는 계약금 입금 및 샘플 확정일로부터 {{leadTime}}로 한다. 불가항력 또는 을의 사유로 인한 지연은 납기에 산입하지 않는다.',
+  },
+  {
+    key: 'shipping',
+    title: '운송 및 인도',
+    body: '인도 조건은 {{incoterm}} 기준으로 하며, 위험은 인도 시점에 을에게 이전된다.',
+  },
+  {
+    key: 'sample',
+    title: '샘플 승인',
+    body: '양산 전 샘플을 제공하는 경우, 을이 서면(전자 승인 포함)으로 승인한 샘플이 품질 기준이 된다.',
+  },
+  {
+    key: 'quality',
+    title: '품질 기준 및 허용 불량률',
+    body: '품질 기준은 승인 샘플 및 합의된 사양을 따르며, 허용 불량률은 {{acceptableDefectRate}}로 한다.',
+  },
+  {
+    key: 'inspection',
+    title: '검품',
+    body: '출고 전 검품은 합의된 방식(AQL 등)으로 실시할 수 있으며, 검품 결과는 양 당사자에게 공유된다.',
+  },
+  {
+    key: 'claim',
+    title: '클레임',
+    body: '을은 제품 수령 후 {{claimDays}}일 이내에 하자를 서면으로 통지하여야 하며, 갑은 확인 후 교환·보수·환불 중 합의된 방식으로 처리한다.',
+  },
+  {
+    key: 'delay',
+    title: '지연',
+    body: '갑의 귀책으로 납기가 지연되는 경우 양 당사자는 협의하여 조치하며, 구체적인 지체상금은 별도 합의에 따른다.',
+  },
+  {
+    key: 'fx',
+    title: '환율 변동',
+    body: '견적 기준 환율 대비 결제 시점 환율이 {{fxThresholdPct}}% 이상 변동한 경우 양 당사자는 가격 조정을 협의할 수 있다.',
+  },
+  {
+    key: 'freight',
+    title: '운임 변동',
+    body: '국제 운임이 견적 시점 대비 현저히 변동한 경우 실제 운임 기준으로 정산할 수 있다.',
+  },
+  {
+    key: 'certification',
+    title: '인증',
+    body: '제품의 한국 내 판매에 필요한 인증의 범위와 비용 부담은 견적서 및 별도 합의에 따른다. 인증 결과에 따라 사양 변경이 필요할 수 있다.',
+  },
+  {
+    key: 'ip',
+    title: '지식재산권',
+    body: '을이 제공한 로고, 디자인 등에 대한 지식재산권 침해 문제는 을이 책임지며, 갑은 제3자의 권리를 침해하지 않도록 합리적인 노력을 한다.',
+  },
+  {
+    key: 'cancellation',
+    title: '계약 해제',
+    body: '생산 착수 이후 을의 사유로 계약을 해제하는 경우 이미 발생한 비용은 을이 부담한다.',
+  },
+  {
+    key: 'force_majeure',
+    title: '불가항력',
+    body: '천재지변, 전쟁, 감염병, 정부 조치, 항만 폐쇄 등 불가항력으로 인한 불이행에 대해 양 당사자는 책임을 지지 않는다.',
+  },
+  {
+    key: 'confidentiality',
+    title: '비밀유지',
+    body: '양 당사자는 본 계약과 관련하여 알게 된 상대방의 영업 비밀을 제3자에게 누설하지 않는다.',
+  },
+  {
+    key: 'dispute',
+    title: '분쟁 해결',
+    body: '본 계약에 관한 분쟁은 상호 협의하여 해결하며, 협의가 되지 않을 경우 갑의 소재지 관할 법원을 전속 관할로 한다.',
+  },
 ];
 
-export const DOCUMENT_TEMPLATE_DEFAULTS: Array<{ kind: string; name: string; html: string; requiresLegalReview?: boolean }> = [
+export const DOCUMENT_TEMPLATE_DEFAULTS: Array<{
+  kind: string;
+  name: string;
+  html: string;
+  requiresLegalReview?: boolean;
+}> = [
   { kind: 'QUOTATION', name: '견적서', html: QUOTATION_HTML },
   { kind: 'CONTRACT', name: '제품 공급 계약서', html: CONTRACT_HTML, requiresLegalReview: true },
   { kind: 'PROFORMA_INVOICE', name: 'Proforma Invoice', html: INVOICE_HTML },
@@ -176,41 +253,149 @@ export const DOCUMENT_TEMPLATE_DEFAULTS: Array<{ kind: string; name: string; htm
   { kind: 'DELIVERY_NOTE', name: '납품서', html: INVOICE_HTML },
 ];
 
-const EMAIL_LAYOUT = (body: string) => `<div style="font-family:Pretendard,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;max-width:560px;margin:0 auto;color:#0f172a">
+const EMAIL_LAYOUT = (
+  body: string,
+) => `<div style="font-family:Pretendard,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;max-width:560px;margin:0 auto;color:#0f172a">
 <div style="padding:20px 0;border-bottom:2px solid {{brand.primaryColor}}"><strong style="font-size:18px;color:{{brand.primaryColor}}">{{brand.siteName}}</strong></div>
 <div style="padding:24px 0;font-size:15px;line-height:1.7">${body}</div>
 <div style="padding:16px 0;border-top:1px solid #e2e8f0;font-size:12px;color:#64748b">{{company.legalName}} · {{company.address}}<br>문의: {{company.email}} {{company.phone}}</div></div>`;
 
-const BTN = (label: string) => `<p style="margin:24px 0"><a href="{{link}}" style="background:{{brand.primaryColor}};color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block">${label}</a></p>`;
+const BTN = (label: string) =>
+  `<p style="margin:24px 0"><a href="{{link}}" style="background:{{brand.primaryColor}};color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block">${label}</a></p>`;
 
 export const EMAIL_TEMPLATE_DEFAULTS: Record<string, { subject: string; body: string }> = {
-  SOURCING_RECEIVED: { subject: '[{{projectCode}}] 소싱 요청이 접수되었습니다', body: EMAIL_LAYOUT(`<p>{{recipientName}}님, 안녕하세요.</p><p>요청하신 <strong>{{productName}}</strong> 소싱 요청이 접수되었습니다. 제품 분석과 공급처 검색을 시작합니다.</p>${BTN('진행 상황 보기')}`) },
-  ANALYSIS_COMPLETED: { subject: '[{{projectCode}}] 제품 분석이 완료되었습니다', body: EMAIL_LAYOUT(`<p>{{productName}}의 분석이 완료되었습니다. 공급처 비교와 예상 도착가격을 확인해 보세요.</p>${BTN('결과 확인하기')}`) },
-  QUOTE_ISSUED: { subject: '[{{projectCode}}] 견적서가 도착했습니다 ({{quoteNumber}})', body: EMAIL_LAYOUT(`<p>{{recipientName}}님, 요청하신 견적서를 보내드립니다.</p><p>견적번호 <strong>{{quoteNumber}}</strong> · 합계 <strong>{{total}}</strong><br>유효기한: {{validUntil}}</p>${BTN('견적서 보기')}`) },
-  QUOTE_REMINDER: { subject: '[{{projectCode}}] 견적 유효기한이 곧 끝납니다', body: EMAIL_LAYOUT(`<p>견적 {{quoteNumber}}의 유효기한이 {{validUntil}}에 끝납니다.</p>${BTN('견적서 보기')}`) },
-  QUOTE_APPROVED: { subject: '[{{projectCode}}] 견적이 승인되었습니다', body: EMAIL_LAYOUT(`<p>견적 {{quoteNumber}}이(가) 승인되었습니다. 계약 절차를 안내해 드리겠습니다.</p>${BTN('프로젝트 보기')}`) },
-  CONTRACT_READY: { subject: '[{{projectCode}}] 계약서를 확인해 주세요', body: EMAIL_LAYOUT(`<p>계약서({{contractNumber}})가 준비되었습니다. 내용을 확인하고 승인해 주세요.</p>${BTN('계약서 확인하기')}`) },
-  CONTRACT_COMPLETED: { subject: '[{{projectCode}}] 계약이 체결되었습니다', body: EMAIL_LAYOUT(`<p>계약({{contractNumber}})이 체결되었습니다.</p>${BTN('프로젝트 보기')}`) },
-  PI_ISSUED: { subject: '[{{projectCode}}] Proforma Invoice가 발행되었습니다', body: EMAIL_LAYOUT(`<p>PI {{invoiceNumber}}가 발행되었습니다. 결제 금액 <strong>{{total}}</strong>, 결제기한 {{dueDate}}.</p>${BTN('인보이스 보기')}`) },
-  PAYMENT_RECEIVED: { subject: '[{{projectCode}}] 입금이 확인되었습니다', body: EMAIL_LAYOUT(`<p>{{amount}} 입금이 확인되었습니다. 감사합니다.</p>${BTN('프로젝트 보기')}`) },
-  PRODUCTION_STARTED: { subject: '[{{projectCode}}] 생산이 시작되었습니다', body: EMAIL_LAYOUT(`<p>주문하신 제품의 생산이 시작되었습니다. 예상 완료일: {{plannedEnd}}</p>${BTN('생산 현황 보기')}`) },
-  PRODUCTION_DELAY: { subject: '[{{projectCode}}] 생산 일정 변경 안내', body: EMAIL_LAYOUT(`<p>생산 일정이 변경되었습니다.</p><p>사유: {{reason}}<br>변경된 예상 완료일: {{plannedEnd}}</p>${BTN('생산 현황 보기')}`) },
-  INSPECTION_COMPLETED: { subject: '[{{projectCode}}] 검품이 완료되었습니다', body: EMAIL_LAYOUT(`<p>검품 결과: <strong>{{result}}</strong></p>${BTN('검품 결과 보기')}`) },
-  SHIPMENT_BOOKED: { subject: '[{{projectCode}}] 선적 예약이 완료되었습니다', body: EMAIL_LAYOUT(`<p>선적이 예약되었습니다. 출항 예정일(ETD): {{etd}}</p>${BTN('운송 현황 보기')}`) },
-  VESSEL_DEPARTED: { subject: '[{{projectCode}}] 화물이 출항했습니다', body: EMAIL_LAYOUT(`<p>화물이 {{originPort}}에서 출항했습니다. 예상 도착일(ETA): {{eta}}</p>${BTN('운송 현황 보기')}`) },
-  ETA_CHANGED: { subject: '[{{projectCode}}] 도착 예정일이 변경되었습니다', body: EMAIL_LAYOUT(`<p>예상 도착일이 {{previousEta}}에서 <strong>{{eta}}</strong>(으)로 변경되었습니다. ({{etaSource}} 기준 예상치)</p>${BTN('운송 현황 보기')}`) },
-  ARRIVED: { subject: '[{{projectCode}}] 화물이 도착했습니다', body: EMAIL_LAYOUT(`<p>화물이 {{destinationPort}}에 도착했습니다. 통관을 진행합니다.</p>${BTN('운송 현황 보기')}`) },
-  CUSTOMS_COMPLETED: { subject: '[{{projectCode}}] 통관이 완료되었습니다', body: EMAIL_LAYOUT(`<p>통관이 완료되었습니다. 곧 국내 배송이 시작됩니다.</p>${BTN('운송 현황 보기')}`) },
-  DELIVERY_STARTED: { subject: '[{{projectCode}}] 국내 배송이 시작되었습니다', body: EMAIL_LAYOUT(`<p>국내 배송이 시작되었습니다.</p>${BTN('배송 현황 보기')}`) },
-  DELIVERED: { subject: '[{{projectCode}}] 배송이 완료되었습니다', body: EMAIL_LAYOUT(`<p>배송이 완료되었습니다. 이용해 주셔서 감사합니다.</p>${BTN('프로젝트 보기')}`) },
+  SOURCING_RECEIVED: {
+    subject: '[{{projectCode}}] 소싱 요청이 접수되었습니다',
+    body: EMAIL_LAYOUT(
+      `<p>{{recipientName}}님, 안녕하세요.</p><p>요청하신 <strong>{{productName}}</strong> 소싱 요청이 접수되었습니다. 제품 분석과 공급처 검색을 시작합니다.</p>${BTN('진행 상황 보기')}`,
+    ),
+  },
+  ANALYSIS_COMPLETED: {
+    subject: '[{{projectCode}}] 제품 분석이 완료되었습니다',
+    body: EMAIL_LAYOUT(
+      `<p>{{productName}}의 분석이 완료되었습니다. 공급처 비교와 예상 도착가격을 확인해 보세요.</p>${BTN('결과 확인하기')}`,
+    ),
+  },
+  QUOTE_ISSUED: {
+    subject: '[{{projectCode}}] 견적서가 도착했습니다 ({{quoteNumber}})',
+    body: EMAIL_LAYOUT(
+      `<p>{{recipientName}}님, 요청하신 견적서를 보내드립니다.</p><p>견적번호 <strong>{{quoteNumber}}</strong> · 합계 <strong>{{total}}</strong><br>유효기한: {{validUntil}}</p>${BTN('견적서 보기')}`,
+    ),
+  },
+  QUOTE_REMINDER: {
+    subject: '[{{projectCode}}] 견적 유효기한이 곧 끝납니다',
+    body: EMAIL_LAYOUT(
+      `<p>견적 {{quoteNumber}}의 유효기한이 {{validUntil}}에 끝납니다.</p>${BTN('견적서 보기')}`,
+    ),
+  },
+  QUOTE_APPROVED: {
+    subject: '[{{projectCode}}] 견적이 승인되었습니다',
+    body: EMAIL_LAYOUT(
+      `<p>견적 {{quoteNumber}}이(가) 승인되었습니다. 계약 절차를 안내해 드리겠습니다.</p>${BTN('프로젝트 보기')}`,
+    ),
+  },
+  CONTRACT_READY: {
+    subject: '[{{projectCode}}] 계약서를 확인해 주세요',
+    body: EMAIL_LAYOUT(
+      `<p>계약서({{contractNumber}})가 준비되었습니다. 내용을 확인하고 승인해 주세요.</p>${BTN('계약서 확인하기')}`,
+    ),
+  },
+  CONTRACT_COMPLETED: {
+    subject: '[{{projectCode}}] 계약이 체결되었습니다',
+    body: EMAIL_LAYOUT(`<p>계약({{contractNumber}})이 체결되었습니다.</p>${BTN('프로젝트 보기')}`),
+  },
+  PI_ISSUED: {
+    subject: '[{{projectCode}}] Proforma Invoice가 발행되었습니다',
+    body: EMAIL_LAYOUT(
+      `<p>PI {{invoiceNumber}}가 발행되었습니다. 결제 금액 <strong>{{total}}</strong>, 결제기한 {{dueDate}}.</p>${BTN('인보이스 보기')}`,
+    ),
+  },
+  PAYMENT_RECEIVED: {
+    subject: '[{{projectCode}}] 입금이 확인되었습니다',
+    body: EMAIL_LAYOUT(`<p>{{amount}} 입금이 확인되었습니다. 감사합니다.</p>${BTN('프로젝트 보기')}`),
+  },
+  PRODUCTION_STARTED: {
+    subject: '[{{projectCode}}] 생산이 시작되었습니다',
+    body: EMAIL_LAYOUT(
+      `<p>주문하신 제품의 생산이 시작되었습니다. 예상 완료일: {{plannedEnd}}</p>${BTN('생산 현황 보기')}`,
+    ),
+  },
+  PRODUCTION_DELAY: {
+    subject: '[{{projectCode}}] 생산 일정 변경 안내',
+    body: EMAIL_LAYOUT(
+      `<p>생산 일정이 변경되었습니다.</p><p>사유: {{reason}}<br>변경된 예상 완료일: {{plannedEnd}}</p>${BTN('생산 현황 보기')}`,
+    ),
+  },
+  INSPECTION_COMPLETED: {
+    subject: '[{{projectCode}}] 검품이 완료되었습니다',
+    body: EMAIL_LAYOUT(`<p>검품 결과: <strong>{{result}}</strong></p>${BTN('검품 결과 보기')}`),
+  },
+  SHIPMENT_BOOKED: {
+    subject: '[{{projectCode}}] 선적 예약이 완료되었습니다',
+    body: EMAIL_LAYOUT(`<p>선적이 예약되었습니다. 출항 예정일(ETD): {{etd}}</p>${BTN('운송 현황 보기')}`),
+  },
+  VESSEL_DEPARTED: {
+    subject: '[{{projectCode}}] 화물이 출항했습니다',
+    body: EMAIL_LAYOUT(
+      `<p>화물이 {{originPort}}에서 출항했습니다. 예상 도착일(ETA): {{eta}}</p>${BTN('운송 현황 보기')}`,
+    ),
+  },
+  ETA_CHANGED: {
+    subject: '[{{projectCode}}] 도착 예정일이 변경되었습니다',
+    body: EMAIL_LAYOUT(
+      `<p>예상 도착일이 {{previousEta}}에서 <strong>{{eta}}</strong>(으)로 변경되었습니다. ({{etaSource}} 기준 예상치)</p>${BTN('운송 현황 보기')}`,
+    ),
+  },
+  ARRIVED: {
+    subject: '[{{projectCode}}] 화물이 도착했습니다',
+    body: EMAIL_LAYOUT(
+      `<p>화물이 {{destinationPort}}에 도착했습니다. 통관을 진행합니다.</p>${BTN('운송 현황 보기')}`,
+    ),
+  },
+  CUSTOMS_COMPLETED: {
+    subject: '[{{projectCode}}] 통관이 완료되었습니다',
+    body: EMAIL_LAYOUT(`<p>통관이 완료되었습니다. 곧 국내 배송이 시작됩니다.</p>${BTN('운송 현황 보기')}`),
+  },
+  DELIVERY_STARTED: {
+    subject: '[{{projectCode}}] 국내 배송이 시작되었습니다',
+    body: EMAIL_LAYOUT(`<p>국내 배송이 시작되었습니다.</p>${BTN('배송 현황 보기')}`),
+  },
+  DELIVERED: {
+    subject: '[{{projectCode}}] 배송이 완료되었습니다',
+    body: EMAIL_LAYOUT(`<p>배송이 완료되었습니다. 이용해 주셔서 감사합니다.</p>${BTN('프로젝트 보기')}`),
+  },
 };
 
 export const POLICY_DEFAULTS: Array<{ type: string; title: string; body: string }> = [
-  { type: 'PRIVACY', title: '개인정보처리방침', body: '※ 이 문서는 기본 양식입니다. 회사 정보와 실제 처리 현황에 맞게 수정하고 법률 검토 후 게시하세요.\n\n1. 수집하는 개인정보 항목: 이름, 이메일, 연락처, 회사명\n2. 수집 목적: 소싱 요청 처리, 견적 및 계약 진행, 고객 상담\n3. 보유 기간: 관계 법령에 따른 기간 또는 회원 탈퇴 시까지\n4. 제3자 제공: 물류·통관·인증 진행에 필요한 범위에서 협력사에 제공될 수 있습니다.\n5. 이용자의 권리: 열람, 정정, 삭제, 처리정지를 요구할 수 있습니다.' },
-  { type: 'TERMS', title: '이용약관', body: '※ 이 문서는 기본 양식입니다. 법률 검토 후 게시하세요.\n\n제1조 (목적) 이 약관은 회사가 제공하는 소싱 서비스 이용 조건을 정합니다.' },
-  { type: 'SOURCING_TERMS', title: '소싱 서비스 약관', body: '※ 기본 양식. 검색 결과의 가격·운임·관세·인증 정보는 예상값이며, 확정 값은 견적서에 명시됩니다.' },
-  { type: 'QUOTATION_NOTICE', title: '견적 안내', body: '견적 가격은 유효기한 내에서 유효하며, 환율·운임·원자재 가격 변동에 따라 조정될 수 있습니다. 인증 비용은 시험 결과에 따라 달라질 수 있습니다.' },
-  { type: 'CANCELLATION', title: '취소 정책', body: '※ 기본 양식. 생산 착수 이후 취소 시 발생한 비용이 청구될 수 있습니다.' },
+  {
+    type: 'PRIVACY',
+    title: '개인정보처리방침',
+    body: '※ 이 문서는 기본 양식입니다. 회사 정보와 실제 처리 현황에 맞게 수정하고 법률 검토 후 게시하세요.\n\n1. 수집하는 개인정보 항목: 이름, 이메일, 연락처, 회사명\n2. 수집 목적: 소싱 요청 처리, 견적 및 계약 진행, 고객 상담\n3. 보유 기간: 관계 법령에 따른 기간 또는 회원 탈퇴 시까지\n4. 제3자 제공: 물류·통관·인증 진행에 필요한 범위에서 협력사에 제공될 수 있습니다.\n5. 이용자의 권리: 열람, 정정, 삭제, 처리정지를 요구할 수 있습니다.',
+  },
+  {
+    type: 'TERMS',
+    title: '이용약관',
+    body: '※ 이 문서는 기본 양식입니다. 법률 검토 후 게시하세요.\n\n제1조 (목적) 이 약관은 회사가 제공하는 소싱 서비스 이용 조건을 정합니다.',
+  },
+  {
+    type: 'SOURCING_TERMS',
+    title: '소싱 서비스 약관',
+    body: '※ 기본 양식. 검색 결과의 가격·운임·관세·인증 정보는 예상값이며, 확정 값은 견적서에 명시됩니다.',
+  },
+  {
+    type: 'QUOTATION_NOTICE',
+    title: '견적 안내',
+    body: '견적 가격은 유효기한 내에서 유효하며, 환율·운임·원자재 가격 변동에 따라 조정될 수 있습니다. 인증 비용은 시험 결과에 따라 달라질 수 있습니다.',
+  },
+  {
+    type: 'CANCELLATION',
+    title: '취소 정책',
+    body: '※ 기본 양식. 생산 착수 이후 취소 시 발생한 비용이 청구될 수 있습니다.',
+  },
   { type: 'REFUND', title: '환불 정책', body: '※ 기본 양식. 환불은 계약 조건 및 하자 확인 결과에 따릅니다.' },
-  { type: 'SHIPPING', title: '배송 정책', body: '※ 기본 양식. 해상·항공 운송 일정은 선사·항공사 사정에 따라 변경될 수 있습니다.' },
+  {
+    type: 'SHIPPING',
+    title: '배송 정책',
+    body: '※ 기본 양식. 해상·항공 운송 일정은 선사·항공사 사정에 따라 변경될 수 있습니다.',
+  },
 ];

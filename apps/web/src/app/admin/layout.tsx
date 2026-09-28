@@ -1,7 +1,23 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Activity, BarChart3, Boxes, Building2, Calculator, ClipboardList, FileText, Gauge, LayoutDashboard, Lightbulb, Settings, ShieldCheck, Ship, Truck, Users } from 'lucide-react';
+import {
+  Activity,
+  BarChart3,
+  Boxes,
+  Building2,
+  Calculator,
+  ClipboardList,
+  FileText,
+  Gauge,
+  LayoutDashboard,
+  Lightbulb,
+  Settings,
+  ShieldCheck,
+  Ship,
+  Truck,
+  Users,
+} from 'lucide-react';
 import { AppShell, type NavGroup } from '@/components/shell';
 
 const groups: NavGroup[] = [
@@ -26,7 +42,13 @@ const groups: NavGroup[] = [
   {
     title: '인사이트',
     items: [
-      { href: '/admin/analytics', label: '분석', icon: BarChart3, perm: 'analytics.read', feature: 'ANALYTICS' },
+      {
+        href: '/admin/analytics',
+        label: '분석',
+        icon: BarChart3,
+        perm: 'analytics.read',
+        feature: 'ANALYTICS',
+      },
       { href: '/admin/demand', label: '수요·소싱 기회', icon: Lightbulb, perm: 'analytics.read' },
     ],
   },

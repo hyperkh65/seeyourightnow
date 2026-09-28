@@ -28,7 +28,9 @@ export function formatNumber(pattern: string, seq: number, date = new Date()): s
     .replace(/\{YY\}/g, yyyy.slice(2))
     .replace(/\{MM\}/g, String(date.getUTCMonth() + 1).padStart(2, '0'))
     .replace(/\{DD\}/g, String(date.getUTCDate()).padStart(2, '0'))
-    .replace(/\{SEQ(?::(\d+))?\}/g, (_m, w: string | undefined) => String(seq).padStart(w ? Number(w) : 4, '0'));
+    .replace(/\{SEQ(?::(\d+))?\}/g, (_m, w: string | undefined) =>
+      String(seq).padStart(w ? Number(w) : 4, '0'),
+    );
 }
 
 /** Whether the sequence resets yearly (pattern contains a year token). */

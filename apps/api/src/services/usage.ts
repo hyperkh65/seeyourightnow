@@ -11,13 +11,20 @@ const period = (d = new Date()) => `${d.getUTCFullYear()}-${String(d.getUTCMonth
  * Increments a usage metric and enforces plan limits. Hard limits reject,
  * soft limits allow but are reported to admins.
  */
-export async function consume(tenantId: string, metric: string, amount = 1): Promise<{ count: number; limit: number | null; exceeded: boolean }> {
+export async function consume(
+  tenantId: string,
+  metric: string,
+  amount = 1,
+): Promise<{ count: number; limit: number | null; exceeded: boolean }> {
   const { limits } = await effectiveFeatures(tenantId);
   const limit = limits[metric];
   const [row] = await systemDb
     .insert(usageCounters)
     .values({ tenantId, metric, period: period(), count: amount })
-    .onConflictDoUpdate({ target: [usageCounters.tenantId, usageCounters.metric, usageCounters.period], set: { count: sql`${usageCounters.count} + ${amount}`, updatedAt: new Date() } })
+    .onConflictDoUpdate({
+      target: [usageCounters.tenantId, usageCounters.metric, usageCounters.period],
+      set: { count: sql`${usageCounters.count} + ${amount}`, updatedAt: new Date() },
+    })
     .returning({ count: usageCounters.count });
   const count = row?.count ?? amount;
   const exceeded = !!limit && limit.value >= 0 && count > limit.value;
@@ -25,7 +32,9 @@ export async function consume(tenantId: string, metric: string, amount = 1): Pro
     await systemDb
       .update(usageCounters)
       .set({ count: sql`${usageCounters.count} - ${amount}` })
-      .where(sql`${usageCounters.tenantId} = ${tenantId} and ${usageCounters.metric} = ${metric} and ${usageCounters.period} = ${period()}`);
+      .where(
+        sql`${usageCounters.tenantId} = ${tenantId} and ${usageCounters.metric} = ${metric} and ${usageCounters.period} = ${period()}`,
+      );
     throw limitExceeded(metric);
   }
   return { count, limit: limit?.value ?? null, exceeded };
@@ -37,5 +46,8 @@ export async function consumeFor(req: FastifyRequest, metric: string, amount = 1
 }
 
 export async function usageFor(tenantId: string) {
-  return systemDb.select().from(usageCounters).where(sql`${usageCounters.tenantId} = ${tenantId} and ${usageCounters.period} = ${period()}`);
+  return systemDb
+    .select()
+    .from(usageCounters)
+    .where(sql`${usageCounters.tenantId} = ${tenantId} and ${usageCounters.period} = ${period()}`);
 }

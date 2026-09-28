@@ -18,7 +18,10 @@ export const quotations = pgTable(
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [uniqueIndex('quotations_number_uq').on(t.tenantId, t.number), index('quotations_project_idx').on(t.tenantId, t.projectId)],
+  (t) => [
+    uniqueIndex('quotations_number_uq').on(t.tenantId, t.number),
+    index('quotations_project_idx').on(t.tenantId, t.projectId),
+  ],
 );
 
 /**
@@ -78,7 +81,10 @@ export const quotationItems = pgTable('quotation_items', {
   unitPrice: money('unit_price').notNull(),
   amount: money('amount').notNull(),
   /** Customer-visible breakdown lines per tenant pricing display settings. */
-  visibleBreakdown: jsonb('visible_breakdown').$type<Array<{ label: string; amount: string }>>().notNull().default([]),
+  visibleBreakdown: jsonb('visible_breakdown')
+    .$type<Array<{ label: string; amount: string }>>()
+    .notNull()
+    .default([]),
   priceBadge: text('price_badge').notNull().default('ESTIMATED'), // ESTIMATED | VERIFIED | FINAL
   /** Staff-only numbers (redacted for customers). */
   internalCost: money('internal_cost'),
@@ -140,7 +146,10 @@ export const contractVersions = pgTable(
     contractId: uuid('contract_id').notNull(),
     version: integer('version').notNull(),
     templateVersionId: uuid('template_version_id'),
-    clauses: jsonb('clauses').$type<Array<{ key: string; title: string; body: string }>>().notNull().default([]),
+    clauses: jsonb('clauses')
+      .$type<Array<{ key: string; title: string; body: string }>>()
+      .notNull()
+      .default([]),
     snapshot: jsonb('snapshot').$type<Record<string, unknown>>().notNull().default({}),
     documentId: uuid('document_id'),
     createdBy: uuid('created_by'),
@@ -168,7 +177,19 @@ export const invoices = pgTable(
     dueDate: text('due_date'),
     status: text('status').notNull().default('ISSUED'), // DRAFT | ISSUED | VOID
     paymentStatus: text('payment_status').notNull().default('PENDING'),
-    lines: jsonb('lines').$type<Array<{ name: string; spec?: string; quantity: number; unit?: string; unitPrice: string; amount: string }>>().notNull().default([]),
+    lines: jsonb('lines')
+      .$type<
+        Array<{
+          name: string;
+          spec?: string;
+          quantity: number;
+          unit?: string;
+          unitPrice: string;
+          amount: string;
+        }>
+      >()
+      .notNull()
+      .default([]),
     snapshot: jsonb('snapshot').$type<Record<string, unknown>>().notNull().default({}),
     documentId: uuid('document_id'),
     issuedAt: ts('issued_at'),
@@ -176,7 +197,10 @@ export const invoices = pgTable(
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [uniqueIndex('invoices_number_uq').on(t.tenantId, t.type, t.number), index('invoices_project_idx').on(t.tenantId, t.projectId)],
+  (t) => [
+    uniqueIndex('invoices_number_uq').on(t.tenantId, t.type, t.number),
+    index('invoices_project_idx').on(t.tenantId, t.projectId),
+  ],
 );
 
 export const payments = pgTable(
@@ -213,7 +237,10 @@ export const purchaseOrders = pgTable('purchase_orders', {
   supplierId: uuid('supplier_id'),
   currency: text('currency').notNull(),
   total: money('total').notNull(),
-  lines: jsonb('lines').$type<Array<{ name: string; quantity: number; unitPrice: string; amount: string }>>().notNull().default([]),
+  lines: jsonb('lines')
+    .$type<Array<{ name: string; quantity: number; unitPrice: string; amount: string }>>()
+    .notNull()
+    .default([]),
   status: text('status').notNull().default('ISSUED'), // DRAFT | ISSUED | CONFIRMED | CANCELLED
   documentId: uuid('document_id'),
   createdBy: uuid('created_by'),
@@ -233,8 +260,14 @@ export const productionOrders = pgTable('production_orders', {
   actualEnd: text('actual_end'),
   progressPct: integer('progress_pct').notNull().default(0),
   delayReason: text('delay_reason').notNull().default(''),
-  milestones: jsonb('milestones').$type<Array<{ name: string; plannedAt?: string; doneAt?: string; note?: string }>>().notNull().default([]),
-  updates: jsonb('updates').$type<Array<{ at: string; status: string; note: string; by?: string; photoFileIds?: string[] }>>().notNull().default([]),
+  milestones: jsonb('milestones')
+    .$type<Array<{ name: string; plannedAt?: string; doneAt?: string; note?: string }>>()
+    .notNull()
+    .default([]),
+  updates: jsonb('updates')
+    .$type<Array<{ at: string; status: string; note: string; by?: string; photoFileIds?: string[] }>>()
+    .notNull()
+    .default([]),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });

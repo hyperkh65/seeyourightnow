@@ -34,7 +34,9 @@ export const MARGIN_SCOPES = [
 export type MarginScope = (typeof MARGIN_SCOPES)[number];
 
 /** Specificity order: later = more specific = wins for SET rules. */
-export const SCOPE_LEVEL: Record<MarginScope, number> = Object.fromEntries(MARGIN_SCOPES.map((s, i) => [s, i])) as Record<MarginScope, number>;
+export const SCOPE_LEVEL: Record<MarginScope, number> = Object.fromEntries(
+  MARGIN_SCOPES.map((s, i) => [s, i]),
+) as Record<MarginScope, number>;
 
 export const MARGIN_SCOPE_LABEL_KO: Record<MarginScope, string> = {
   GLOBAL: '전체 기본',
@@ -120,7 +122,8 @@ export interface ManualOverride {
 
 function ruleMatches(rule: MarginRule, ctx: MarginContext): boolean {
   const m = rule.match;
-  const eqi = (a?: string, b?: string) => a !== undefined && b !== undefined && a.trim().toLowerCase() === b.trim().toLowerCase();
+  const eqi = (a?: string, b?: string) =>
+    a !== undefined && b !== undefined && a.trim().toLowerCase() === b.trim().toLowerCase();
   switch (rule.scope) {
     case 'GLOBAL':
       break;
@@ -131,7 +134,12 @@ function ruleMatches(rule: MarginRule, ctx: MarginContext): boolean {
       if (!eqi(m.subcategory, ctx.subcategory)) return false;
       break;
     case 'HS_PREFIX':
-      if (!m.hsPrefix || !ctx.hsCode || !ctx.hsCode.replace(/\D/g, '').startsWith(m.hsPrefix.replace(/\D/g, ''))) return false;
+      if (
+        !m.hsPrefix ||
+        !ctx.hsCode ||
+        !ctx.hsCode.replace(/\D/g, '').startsWith(m.hsPrefix.replace(/\D/g, ''))
+      )
+        return false;
       break;
     case 'SOURCE':
       if (!m.sourceType || m.sourceType !== ctx.sourceType) return false;
@@ -153,7 +161,7 @@ function ruleMatches(rule: MarginRule, ctx: MarginContext): boolean {
       break;
     case 'MOQ':
       if (m.belowMoq === undefined || ctx.moq === null || ctx.moq === undefined) return false;
-      if ((ctx.quantity < ctx.moq) !== m.belowMoq) return false;
+      if (ctx.quantity < ctx.moq !== m.belowMoq) return false;
       break;
     case 'RISK':
       if (!m.riskLevels || !ctx.riskLevel || !m.riskLevels.includes(ctx.riskLevel)) return false;
@@ -189,10 +197,15 @@ export function resolveMarkup(
   config: MarginConfig,
   override?: ManualOverride | null,
 ): ComponentMarkupExplanation {
-  const applicable = rules.filter((r) => r.active && (r.component === component || r.component === 'ALL') && ruleMatches(r, ctx));
+  const applicable = rules.filter(
+    (r) => r.active && (r.component === component || r.component === 'ALL') && ruleMatches(r, ctx),
+  );
   const sets = applicable
     .filter((r) => r.action === 'SET')
-    .sort((a, b) => SCOPE_LEVEL[b.scope] - SCOPE_LEVEL[a.scope] || b.priority - a.priority || a.id.localeCompare(b.id));
+    .sort(
+      (a, b) =>
+        SCOPE_LEVEL[b.scope] - SCOPE_LEVEL[a.scope] || b.priority - a.priority || a.id.localeCompare(b.id),
+    );
   const winner = sets[0];
   const adds = applicable.filter((r) => r.action === 'ADD');
 
@@ -200,10 +213,14 @@ export function resolveMarkup(
   const explanation: ComponentMarkupExplanation = {
     component,
     baseMarkupPct: value.toString(),
-    baseFrom: winner ? { ruleId: winner.id, name: winner.name, scope: winner.scope } : { ruleId: null, name: '기본값', scope: 'DEFAULT' },
+    baseFrom: winner
+      ? { ruleId: winner.id, name: winner.name, scope: winner.scope }
+      : { ruleId: null, name: '기본값', scope: 'DEFAULT' },
     adjustments: adds.map((r) => ({ ruleId: r.id, name: r.name, scope: r.scope, markupPct: r.markupPct })),
     finalMarkupPct: '0',
-    overriddenRules: sets.slice(1).map((r) => ({ ruleId: r.id, name: r.name, scope: r.scope, markupPct: r.markupPct })),
+    overriddenRules: sets
+      .slice(1)
+      .map((r) => ({ ruleId: r.id, name: r.name, scope: r.scope, markupPct: r.markupPct })),
   };
   for (const a of adds) value = value.add(a.markupPct);
 
@@ -260,7 +277,8 @@ export function calculatePrice(
   let totalCost = new D(0);
   let total = new D(0);
   const grouped = new Map<PricingComponent, Decimal>();
-  for (const c of costs) grouped.set(c.component, (grouped.get(c.component) ?? new D(0)).add(c.totalCostBase));
+  for (const c of costs)
+    grouped.set(c.component, (grouped.get(c.component) ?? new D(0)).add(c.totalCostBase));
 
   for (const [component, cost] of grouped) {
     totalCost = totalCost.add(cost);
@@ -271,11 +289,20 @@ export function calculatePrice(
       comps.push({ component, costBase: cost.toString(), markupPct: markup, priceBase: price.toString() });
       continue;
     }
-    const override = overrides.find((o) => o.component === component) ?? overrides.find((o) => o.component === 'ALL') ?? null;
+    const override =
+      overrides.find((o) => o.component === component) ??
+      overrides.find((o) => o.component === 'ALL') ??
+      null;
     const expl = resolveMarkup(component, rules, ctx, config, override);
     const price = cost.mul(new D(1).add(new D(expl.finalMarkupPct).div(100)));
     total = total.add(price);
-    comps.push({ component, costBase: cost.toString(), markupPct: expl.finalMarkupPct, priceBase: price.toString(), explanation: expl });
+    comps.push({
+      component,
+      costBase: cost.toString(),
+      markupPct: expl.finalMarkupPct,
+      priceBase: price.toString(),
+      explanation: expl,
+    });
   }
 
   const qty = new D(quantity);
@@ -285,7 +312,11 @@ export function calculatePrice(
   return {
     currency,
     quantity,
-    components: comps.map((c) => ({ ...c, costBase: new D(c.costBase).toFixed(2), priceBase: new D(c.priceBase).toFixed(2) })),
+    components: comps.map((c) => ({
+      ...c,
+      costBase: new D(c.costBase).toFixed(2),
+      priceBase: new D(c.priceBase).toFixed(2),
+    })),
     totalCostBase: totalCost.toFixed(2),
     calculatedTotalBase: total.toFixed(2),
     calculatedUnitPriceBase: unit.toString(),

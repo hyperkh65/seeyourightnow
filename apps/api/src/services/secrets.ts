@@ -12,7 +12,11 @@ import { decrypt, encrypt, last4 } from '../lib/crypto.js';
 
 interface SecretBackend {
   name: 'BUILTIN' | 'VAULT' | 'INFISICAL';
-  put(tenantId: string, name: string, value: string): Promise<{ ciphertext: string | null; externalRef: string }>;
+  put(
+    tenantId: string,
+    name: string,
+    value: string,
+  ): Promise<{ ciphertext: string | null; externalRef: string }>;
   get(row: typeof secrets.$inferSelect): Promise<string>;
 }
 
@@ -41,7 +45,9 @@ const vault: SecretBackend = {
     return { ciphertext: null, externalRef: path };
   },
   async get(row) {
-    const res = await fetch(`${config.VAULT_ADDR}/v1/${config.VAULT_MOUNT}/data/${row.externalRef}`, { headers: { 'X-Vault-Token': config.VAULT_TOKEN ?? '' } });
+    const res = await fetch(`${config.VAULT_ADDR}/v1/${config.VAULT_MOUNT}/data/${row.externalRef}`, {
+      headers: { 'X-Vault-Token': config.VAULT_TOKEN ?? '' },
+    });
     if (!res.ok) throw new Error(`Vault read failed: ${res.status}`);
     const j = (await res.json()) as { data?: { data?: { value?: string } } };
     const v = j.data?.data?.value;
@@ -58,14 +64,24 @@ const infisical: SecretBackend = {
     const res = await fetch(`${config.INFISICAL_API_URL}/api/v3/secrets/raw/${key}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${config.INFISICAL_TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ workspaceId: config.INFISICAL_PROJECT_ID, environment: config.INFISICAL_ENVIRONMENT, secretValue: value, type: 'shared' }),
+      body: JSON.stringify({
+        workspaceId: config.INFISICAL_PROJECT_ID,
+        environment: config.INFISICAL_ENVIRONMENT,
+        secretValue: value,
+        type: 'shared',
+      }),
     });
     if (!res.ok && res.status !== 400) throw new Error(`Infisical write failed: ${res.status}`);
     if (res.status === 400) {
       const upd = await fetch(`${config.INFISICAL_API_URL}/api/v3/secrets/raw/${key}`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${config.INFISICAL_TOKEN}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workspaceId: config.INFISICAL_PROJECT_ID, environment: config.INFISICAL_ENVIRONMENT, secretValue: value, type: 'shared' }),
+        body: JSON.stringify({
+          workspaceId: config.INFISICAL_PROJECT_ID,
+          environment: config.INFISICAL_ENVIRONMENT,
+          secretValue: value,
+          type: 'shared',
+        }),
       });
       if (!upd.ok) throw new Error(`Infisical update failed: ${upd.status}`);
     }
@@ -88,20 +104,46 @@ function backendFor(name: string): SecretBackend {
 }
 
 /** Creates or rotates a secret; returns its id (the reference stored elsewhere). */
-export async function putSecret(tx: Tx, tenantId: string, name: string, value: string, userId?: string | null): Promise<string> {
+export async function putSecret(
+  tx: Tx,
+  tenantId: string,
+  name: string,
+  value: string,
+  userId?: string | null,
+): Promise<string> {
   const backend = backendFor(config.SECRETS_BACKEND);
   const stored = await backend.put(tenantId, name, value);
-  const [existing] = await tx.select().from(secrets).where(and(eq(secrets.tenantId, tenantId), eq(secrets.name, name))).limit(1);
+  const [existing] = await tx
+    .select()
+    .from(secrets)
+    .where(and(eq(secrets.tenantId, tenantId), eq(secrets.name, name)))
+    .limit(1);
   if (existing) {
     await tx
       .update(secrets)
-      .set({ backend: backend.name, ciphertext: stored.ciphertext, externalRef: stored.externalRef, last4: last4(value), version: existing.version + 1, rotatedAt: new Date(), updatedAt: new Date() })
+      .set({
+        backend: backend.name,
+        ciphertext: stored.ciphertext,
+        externalRef: stored.externalRef,
+        last4: last4(value),
+        version: existing.version + 1,
+        rotatedAt: new Date(),
+        updatedAt: new Date(),
+      })
       .where(eq(secrets.id, existing.id));
     return existing.id;
   }
   const [row] = await tx
     .insert(secrets)
-    .values({ tenantId, name, backend: backend.name, ciphertext: stored.ciphertext, externalRef: stored.externalRef, last4: last4(value), createdBy: userId ?? null })
+    .values({
+      tenantId,
+      name,
+      backend: backend.name,
+      ciphertext: stored.ciphertext,
+      externalRef: stored.externalRef,
+      last4: last4(value),
+      createdBy: userId ?? null,
+    })
     .returning({ id: secrets.id });
   return row!.id;
 }
@@ -113,7 +155,11 @@ export async function readSecret(tx: Tx, secretId: string): Promise<string | nul
 }
 
 export async function secretMask(tx: Tx, secretId: string): Promise<string | null> {
-  const [row] = await tx.select({ last4: secrets.last4 }).from(secrets).where(eq(secrets.id, secretId)).limit(1);
+  const [row] = await tx
+    .select({ last4: secrets.last4 })
+    .from(secrets)
+    .where(eq(secrets.id, secretId))
+    .limit(1);
   return row ? `********${row.last4}` : null;
 }
 

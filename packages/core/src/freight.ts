@@ -1,6 +1,11 @@
 import type { Decimal } from 'decimal.js';
 import { D, FxTable, type CurrencyCode } from './money.js';
-import { FREIGHT_SOURCE_PRIORITY, type FreightMode, type FreightSource, type VerificationStatus } from './enums.js';
+import {
+  FREIGHT_SOURCE_PRIORITY,
+  type FreightMode,
+  type FreightSource,
+  type VerificationStatus,
+} from './enums.js';
 
 /**
  * Freight Engine: packing math + mode feasibility + rate application.
@@ -42,7 +47,10 @@ export interface PackingMetrics {
   oversizeCarton: boolean;
 }
 
-export const CONTAINER_CAPACITY: Record<'FCL_20' | 'FCL_40' | 'FCL_40HQ', { usableCbm: number; maxPayloadKg: number; label: string }> = {
+export const CONTAINER_CAPACITY: Record<
+  'FCL_20' | 'FCL_40' | 'FCL_40HQ',
+  { usableCbm: number; maxPayloadKg: number; label: string }
+> = {
   // Typical practical loadable volume (not the internal nominal volume).
   FCL_20: { usableCbm: 28, maxPayloadKg: 21700, label: "20' GP" },
   FCL_40: { usableCbm: 58, maxPayloadKg: 26500, label: "40' GP" },
@@ -50,7 +58,8 @@ export const CONTAINER_CAPACITY: Record<'FCL_20' | 'FCL_40' | 'FCL_40HQ', { usab
 };
 
 export function packingMetrics(p: PackingInput): PackingMetrics {
-  if (!Number.isInteger(p.cartonCount) || p.cartonCount <= 0) throw new Error('cartonCount must be a positive integer');
+  if (!Number.isInteger(p.cartonCount) || p.cartonCount <= 0)
+    throw new Error('cartonCount must be a positive integer');
   const l = new D(p.cartonLengthCm);
   const w = new D(p.cartonWidthCm);
   const h = new D(p.cartonHeightCm);
@@ -172,8 +181,16 @@ function isExpired(rate: FreightRate, asOf: Date): boolean {
 }
 
 /** Picks the most trusted, still-valid rate for a lane/mode. Expired rates are used only as a last resort, flagged. */
-export function pickRate(rates: FreightRate[], mode: FreightMode, origin: string, destination: string, asOf = new Date()): { rate: FreightRate; expired: boolean } | null {
-  const lane = rates.filter((r) => r.mode === mode && laneMatch(r.origin, origin) && laneMatch(r.destination, destination));
+export function pickRate(
+  rates: FreightRate[],
+  mode: FreightMode,
+  origin: string,
+  destination: string,
+  asOf = new Date(),
+): { rate: FreightRate; expired: boolean } | null {
+  const lane = rates.filter(
+    (r) => r.mode === mode && laneMatch(r.origin, origin) && laneMatch(r.destination, destination),
+  );
   if (lane.length === 0) return null;
   const sorted = [...lane].sort((a, b) => {
     const ea = isExpired(a, asOf) ? 1 : 0;
@@ -219,7 +236,12 @@ export function compareFreightOptions(params: {
     }
     const picked = pickRate(params.rates, mode, params.origin, params.destination, params.asOf);
     if (!picked) {
-      options.push({ mode, status: 'NO_RATE', feasibility: feas, actionRequired: '해당 구간 운임 데이터가 없습니다. 포워더 견적을 요청하세요.' });
+      options.push({
+        mode,
+        status: 'NO_RATE',
+        feasibility: feas,
+        actionRequired: '해당 구간 운임 데이터가 없습니다. 포워더 견적을 요청하세요.',
+      });
       continue;
     }
     const { rate, expired } = picked;
@@ -273,7 +295,10 @@ export function compareFreightOptions(params: {
       costOriginal: cost.toFixed(2),
       currency: rate.currency,
       ...(costBase !== undefined ? { costBase } : {}),
-      transitDays: rate.transitDaysMin !== undefined ? `${rate.transitDaysMin}${rate.transitDaysMax && rate.transitDaysMax !== rate.transitDaysMin ? `-${rate.transitDaysMax}` : ''}` : undefined,
+      transitDays:
+        rate.transitDaysMin !== undefined
+          ? `${rate.transitDaysMin}${rate.transitDaysMax && rate.transitDaysMax !== rate.transitDaysMin ? `-${rate.transitDaysMax}` : ''}`
+          : undefined,
       source: rate.source,
       verification: rate.verification,
       expired,
@@ -281,7 +306,9 @@ export function compareFreightOptions(params: {
     } as FreightOption);
   }
   const priced = options.filter((o) => o.status === 'PRICED' && o.costBase !== undefined && !o.expired);
-  const recommended = priced.length ? priced.reduce((a, b) => (new D(a.costBase!).lte(b.costBase!) ? a : b)).mode : null;
+  const recommended = priced.length
+    ? priced.reduce((a, b) => (new D(a.costBase!).lte(b.costBase!) ? a : b)).mode
+    : null;
   return { metrics, options, recommended };
 }
 
@@ -296,6 +323,9 @@ export function errorRatePct(predicted: string, actual: string): string | null {
 export function mape(pairs: Array<{ predicted: string; actual: string }>): string | null {
   const valid = pairs.filter((p) => !new D(p.actual).isZero());
   if (!valid.length) return null;
-  const total = valid.reduce((acc, p) => acc.add(new D(p.predicted).sub(p.actual).abs().div(p.actual)), new D(0));
+  const total = valid.reduce(
+    (acc, p) => acc.add(new D(p.predicted).sub(p.actual).abs().div(p.actual)),
+    new D(0),
+  );
   return total.div(valid.length).mul(100).toFixed(2);
 }
